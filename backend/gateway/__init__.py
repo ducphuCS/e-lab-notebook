@@ -1,7 +1,7 @@
 """Gateway client — the ONLY code allowed to talk to backend services over
 HTTP (docs/TEST_STRATEGIES.md §3).
 
-Its four responsibilities (landing in Phase 2):
+Its four responsibilities (first client — ingredients — landed 2026-08-24):
 
 1. route to the right service (config, not hardcoded URLs)
 2. build + validate requests before they leave (fail fast)
