@@ -12,6 +12,12 @@ __pycache__/
 # Transient test scratch space (tests/_scratch/, per docs/TEST_STRATEGIES.md)
 tests/_scratch/
 
+# SQLite dev databases (frontend/ingredients/README.md §5.2)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
 # uv virtual environment (repo root, per AGENTS.md)
 .venv/
 
