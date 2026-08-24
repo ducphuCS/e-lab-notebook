@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# uv virtual environment (repo root, per AGENTS.md)
+.venv/
+
+# Environment / secrets
+.env
+.streamlit/secrets.toml
+
+# macOS
+.DS_Store
