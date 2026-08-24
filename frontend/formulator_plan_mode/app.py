@@ -1,6 +1,14 @@
 import streamlit as st
 import pandas as pd
 
+try:
+    from frontend.formulator_plan_mode.validators import (
+        validate_formulations_df,
+        validate_levels_df,
+    )
+except ImportError:  # run directly via streamlit (script dir on sys.path)
+    from validators import validate_formulations_df, validate_levels_df
+
 st.set_page_config(page_title="Formulator Plan Mode", layout="wide")
 
 st.title("Formulator Plan Mode")
@@ -40,6 +48,7 @@ if show_experiment:
             },
             key="levels_editor"
         )
+        levels_problems = validate_levels_df(levels_df)
         
         outcomes = st.text_area("Outcomes", help="Expected or observed outcomes.")
     
@@ -48,6 +57,7 @@ if show_experiment:
 else:
     # If hidden, the form container takes the full width of the page
     form_container = st.container()
+    levels_problems: list[str] = []
 
 with form_container:
     st.header("2. Formulations Draft")
@@ -73,6 +83,12 @@ with form_container:
         key="formulation_editor"
     )
 
+formulations_problems = validate_formulations_df(edited_df)
+problems = levels_problems + formulations_problems
+
 st.divider()
 if st.button("Save Experiment & Draft", type="primary"):
-    st.success("Experiment drafted successfully!")
+    if problems:
+        st.error("Cannot save — please fix the following:\n\n- " + "\n- ".join(problems))
+    else:
+        st.success("Experiment drafted successfully!")
