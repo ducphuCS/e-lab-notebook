@@ -39,7 +39,19 @@ Analyze**.
 - **Dependencies:** `streamlit >= 1.60.0` (UI), `pandas >= 3.0.5` (data)
 - **No JavaScript/Node tooling** — no `package.json` or frontend build config.
 
-## 4. Project layout
+## 4. Implementation principles
+
+**Prefer built-ins over custom code.** Use what the framework and libraries
+(Streamlit, pandas, the Python standard library) already provide before
+writing custom implementations — for both features and UI.
+
+- Don't handcraft a function or widget that a library already supports.
+- Avoid custom CSS and heavy styling; use the default look and behavior
+  unless a requirement explicitly needs more.
+- Keep implementations as simple as possible for maintainability — the
+  simplest solution that works is preferred.
+
+## 5. Project layout
 
 > **Architecture rule (owner):** Each page has its own folder for
 > modularization. `frontend/` and `backend/` each have their own `app.py` as
@@ -59,9 +71,9 @@ Target layout and current status:
 | `archive/` | Older docs (e.g. `PROJECT.md`). | committed |
 | `.env` | Empty env file. | — |
 
-## 5. Current state
+## 6. Current state
 
-Early prototype. The last commit is `Update project docs`. Section 4's
+Early prototype. The last commit is `Update project docs`. Section 5's
 architecture rule is the **target**; the codebase is still catching up:
 
 - `main.py` does not run the app yet — it only prints `Hello from eln-ver2!`.
@@ -75,7 +87,7 @@ architecture rule is the **target**; the codebase is still catching up:
 - Architecture decisions belong to the owner. Propose changes, don't assume
   them.
 
-## 6. How to run
+## 7. How to run
 
 Per the architecture rule, the app is run from the root entrypoint:
 
@@ -89,7 +101,7 @@ uv run python main.py
 uv run streamlit run frontend/formulator_plan_mode/app.py
 ```
 
-## 7. Notes for agents
+## 8. Notes for agents
 
 - The collaboration rules (section 1) override convenience. When in doubt, ask.
 - `.env` exists but is empty.
