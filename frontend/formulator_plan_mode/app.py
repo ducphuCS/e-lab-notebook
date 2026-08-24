@@ -1,13 +1,12 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
-try:
-    from frontend.formulator_plan_mode.validators import (
-        validate_formulations_df,
-        validate_levels_df,
-    )
-except ImportError:  # run directly via streamlit (script dir on sys.path)
-    from validators import validate_formulations_df, validate_levels_df
+# The project is installed editable (uv sync), so the repo root is on
+# sys.path and root-relative imports work in every launch mode.
+from frontend.formulator_plan_mode.validators import (
+    validate_formulations_df,
+    validate_levels_df,
+)
 
 st.set_page_config(page_title="Formulator Plan Mode", layout="wide")
 
