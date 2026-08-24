@@ -8,63 +8,97 @@ Registers every page of the app. The four planned modules are placeholder
 stubs for now; replace each stub with a real page (e.g.
 `st.Page("library/app.py", ...)`) as the module's folder lands.
 """
-from typing import Callable
-
 import streamlit as st
-
-
-def _module_stub(title: str, description: str) -> Callable[[], None]:
-    """Return a placeholder page for a not-yet-built module."""
-
-    def page() -> None:
-        st.title(title)
-        st.caption(description)
-        st.info("This module is planned but not implemented yet.")
-
-    return page
 
 
 def main() -> None:
     st.set_page_config(page_title="ELN v2", layout="wide")
 
-    pages = [
-        # Planned modules (placeholders until their pages are built).
-        st.Page(
-            _module_stub("Overview", "Project timeline, risks, and individual workload."),
-            title="Overview",
-            icon=":material/dashboard:",
-            url_path="overview",
-            default=True,
-        ),
-        st.Page(
-            _module_stub(
-                "Library",
-                "Ingredients, equipment, test methods, test panels, and formulas.",
+    # Sections are defined via a mapping: each key is the section header,
+    # each value the list of pages in that section.
+    pages = {
+        "Overview": [
+            st.Page(
+                "dashboard/app.py",
+                title="Dashboard",
+                icon=":material/dashboard:",
+                url_path="dashboard",
+                default=True,
             ),
-            title="Library",
-            icon=":material/library_books:",
-            url_path="library",
-        ),
-        st.Page(
-            _module_stub("Lab", "Actual lab work: batches, samples, and test reports."),
-            title="Lab",
-            icon=":material/science:",
-            url_path="lab",
-        ),
-        st.Page(
-            _module_stub("Analyze", "Learnings from DoE chains and design of new DoEs."),
-            title="Analyze",
-            icon=":material/analytics:",
-            url_path="analyze",
-        ),
-        # Existing standalone page, now routed through the frontend entrypoint.
-        st.Page(
-            "formulator_plan_mode/app.py",
-            title="Formulator Plan Mode",
-            icon=":material/edit_note:",
-            url_path="formulator-plan-mode",
-        ),
-    ]
+            st.Page(
+                "projects/app.py",
+                title="Projects",
+                icon=":material/folder:",
+                url_path="projects",
+            ),
+        ],
+        "Library": [
+            st.Page(
+                "ingredients/app.py",
+                title="Ingredients",
+                icon=":material/inventory_2:",
+                url_path="ingredients",
+            ),
+            st.Page(
+                "equipment/app.py",
+                title="Equipment",
+                icon=":material/biotech:",
+                url_path="equipment",
+            ),
+            st.Page(
+                "test_methods/app.py",
+                title="Test Methods",
+                icon=":material/menu_book:",
+                url_path="test-methods",
+            ),
+            st.Page(
+                "test_panels/app.py",
+                title="Test Panels",
+                icon=":material/view_agenda:",
+                url_path="test-panels",
+            ),
+            st.Page(
+                "formulas/app.py",
+                title="Formulas",
+                icon=":material/functions:",
+                url_path="formulas",
+            ),
+            st.Page(
+                "documents/app.py",
+                title="Documents",
+                icon=":material/article:",
+                url_path="documents",
+            ),
+        ],
+        "Lab": [
+            st.Page(
+                "batches/app.py",
+                title="Batches",
+                icon=":material/layers:",
+                url_path="batches",
+            ),
+            st.Page(
+                "samples/app.py",
+                title="Samples",
+                icon=":material/science:",
+                url_path="samples",
+            ),
+            st.Page(
+                "test_reports/app.py",
+                title="Test Reports",
+                icon=":material/assessment:",
+                url_path="test-reports",
+            ),
+        ],
+        "Analyze": [
+            st.Page(
+                "doe/app.py",
+                title="DOE",
+                icon=":material/analytics:",
+                url_path="doe",
+            ),
+        ],
+    }
 
     st.navigation(pages).run()
 

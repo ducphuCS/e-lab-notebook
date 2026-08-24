@@ -1,10 +1,10 @@
-"""Unit tests for the Formulator Plan Mode page validators.
+"""Unit tests for the DOE page validators.
 
 Layer: unit — frontend utilities (docs/TEST_STRATEGIES.md §4.2).
 """
 import pandas as pd
 
-from frontend.formulator_plan_mode.validators import (
+from frontend.doe.validators import (
     validate_formulations_df,
     validate_levels_df,
 )

@@ -3,14 +3,14 @@ import streamlit as st
 
 # The project is installed editable (uv sync), so the repo root is on
 # sys.path and root-relative imports work in every launch mode.
-from frontend.formulator_plan_mode.validators import (
+from frontend.doe.validators import (
     validate_formulations_df,
     validate_levels_df,
 )
 
-st.set_page_config(page_title="Formulator Plan Mode", layout="wide")
+st.set_page_config(page_title="DOE", layout="wide")
 
-st.title("Formulator Plan Mode")
+st.title("DOE")
 
 st.header("1. Record Intent & Notes")
 intent_notes = st.text_area("Record your intent and notes during the experiment here:", height=100, help="Log your thoughts, rationales, and observations.")

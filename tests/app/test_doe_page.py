@@ -1,4 +1,4 @@
-"""AppTest behavior tests for the Formulator Plan Mode page.
+"""AppTest behavior tests for the DOE page.
 
 Layer: app behavior (docs/TEST_STRATEGIES.md §4.4) — runs the page
 headlessly via streamlit.testing.v1.AppTest: no browser, no network.
@@ -8,14 +8,14 @@ from streamlit.testing.v1 import AppTest
 
 
 def _page() -> AppTest:
-    return AppTest.from_file("frontend/formulator_plan_mode/app.py")
+    return AppTest.from_file("frontend/doe/app.py")
 
 
 def test_page_loads_without_error() -> None:
     at = _page()
     at.run()
     assert not at.exception
-    assert at.title[0].value == "Formulator Plan Mode"
+    assert at.title[0].value == "DOE"
 
 
 def test_save_with_invalid_formulations_shows_error() -> None:

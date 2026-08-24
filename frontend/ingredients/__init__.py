@@ -1,0 +1,1 @@
+"""Ingredients page package."""

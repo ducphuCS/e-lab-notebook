@@ -1,10 +1,10 @@
-"""Pure validation helpers for the Formulator Plan Mode page.
+"""Pure validation helpers for the DOE page.
 
 These functions contain no ``streamlit`` imports and operate on plain
 ``pandas.DataFrame`` inputs, so they can be unit-tested headlessly
 (docs/TEST_STRATEGIES.md §4.2). The page calls them and renders the results.
 
-Tests: tests/unit/frontend/test_formulator_plan_mode_validators.py
+Tests: tests/unit/frontend/test_doe_validators.py
 """
 from __future__ import annotations
 
