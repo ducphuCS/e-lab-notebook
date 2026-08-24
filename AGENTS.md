@@ -39,28 +39,51 @@ Analyze**.
 - **Dependencies:** `streamlit >= 1.60.0` (UI), `pandas >= 3.0.5` (data)
 - **No JavaScript/Node tooling** — no `package.json` or frontend build config.
 
-## 4. Project layout (current, committed state)
+## 4. Project layout
 
-| Path | Purpose |
-|---|---|
-| `frontend/formulator_plan_mode/app.py` | App entry point — the only real code so far. A standalone Streamlit "Formulator Plan Mode" page (intent notes, experiment details with a factor-levels `data_editor`, formulations draft, save button). |
-| `frontend/sidebar/`, `frontend/project_page/` | Empty leftover dirs from a refactor that was removed from the working tree. Do not build on them without asking. |
-| `backend/` | Reserved — empty, no code yet. |
-| `tests/` | Reserved — empty, no tests yet. |
-| `docs/` | Product documentation (`PROGRAM.md`, `IDEAS.md`, `prompts/`). |
-| `archive/` | Older docs (e.g. `PROJECT.md`). |
-| `main.py` | Root entrypoint (currently prints `Hello from eln-ver2!`). |
-| `.env` | Empty env file. |
+> **Architecture rule (owner):** Each page has its own folder for
+> modularization. `frontend/` and `backend/` each have their own `app.py` as
+> entrypoint. The `main.py` in the root folder is used to run the app.
+
+Target layout and current status:
+
+| Path | Purpose | Status |
+|---|---|---|
+| `main.py` | Runs the app — launches the frontend (and backend) entrypoints. | exists, but only prints `Hello from eln-ver2!` — not yet functional |
+| `frontend/app.py` | Frontend entrypoint (page router). | planned — not yet created |
+| `frontend/<page>/` | One folder per page for modularization, each with its own files. Example: `frontend/formulator_plan_mode/app.py`. | pattern in use |
+| `backend/app.py` | Backend entrypoint. | planned — not yet created |
+| `backend/` | Backend modules. | empty |
+| `tests/` | Tests. | empty |
+| `docs/` | Product documentation (`PROGRAM.md`, `IDEAS.md`, `prompts/`). | committed |
+| `archive/` | Older docs (e.g. `PROJECT.md`). | committed |
+| `.env` | Empty env file. | — |
 
 ## 5. Current state
 
-Early prototype. The last commit is `Update project docs`. An earlier,
-unapproved navigation refactor (`frontend/app.py`, `frontend/pages/`,
-`frontend/sidebar/` using `st.navigation`) was removed from the working tree;
-only empty dirs remain. The app architecture is **open for discussion** —
-propose changes, don't assume them.
+Early prototype. The last commit is `Update project docs`. Section 4's
+architecture rule is the **target**; the codebase is still catching up:
+
+- `main.py` does not run the app yet — it only prints `Hello from eln-ver2!`.
+- `frontend/app.py` and `backend/app.py` do not exist yet.
+- `frontend/formulator_plan_mode/app.py` is the only real code — a standalone
+  Streamlit page, not yet routed through a frontend entrypoint.
+- `frontend/sidebar/` and `frontend/project_page/` are empty leftover dirs
+  from an earlier refactor. `project_page/` matches the page-folder pattern;
+  `sidebar/` does not — decide its fate (keep / repurpose / delete) before
+  building on either.
+- Architecture decisions belong to the owner. Propose changes, don't assume
+  them.
 
 ## 6. How to run
+
+Per the architecture rule, the app is run from the root entrypoint:
+
+```bash
+uv run python main.py
+```
+
+⚠️ Until `main.py` actually runs the app, preview the current page directly:
 
 ```bash
 uv run streamlit run frontend/formulator_plan_mode/app.py
