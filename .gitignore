@@ -8,6 +8,9 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
+# Transient test scratch space (tests/_scratch/, per docs/TEST_STRATEGIES.md)
+tests/_scratch/
+
 # uv virtual environment (repo root, per AGENTS.md)
 .venv/
 
