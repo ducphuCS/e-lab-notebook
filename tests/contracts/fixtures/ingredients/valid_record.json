@@ -1,0 +1,11 @@
+{
+  "id": 1,
+  "name": "Water",
+  "item_code": "WC-001",
+  "item_description": "Purified water",
+  "supplier": "Acme",
+  "notes": "Store at room temperature",
+  "uom": "L",
+  "state": "liquid",
+  "custom_fields": { "pH": "7" }
+}

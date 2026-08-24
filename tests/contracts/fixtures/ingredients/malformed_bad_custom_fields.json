@@ -1,0 +1,11 @@
+{
+  "id": 1,
+  "name": "Water",
+  "item_code": null,
+  "item_description": null,
+  "supplier": null,
+  "notes": null,
+  "uom": null,
+  "state": null,
+  "custom_fields": ["pH"]
+}
