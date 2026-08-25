@@ -9,7 +9,7 @@ from frontend.doe.validators import (
 )
 from frontend.common import configure_page
 
-configure_page("DOE")
+configure_page()
 
 st.title("DOE")
 

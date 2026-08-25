@@ -14,7 +14,7 @@ from frontend.common import configure_page
 
 
 def main() -> None:
-    configure_page("ELN v2")
+    configure_page()
 
     # Sections are defined via a mapping: each key is the section header,
     # each value the list of pages in that section.

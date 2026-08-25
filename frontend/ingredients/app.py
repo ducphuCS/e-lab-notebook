@@ -23,18 +23,30 @@ from frontend.ingredients.utils import (
 )
 from frontend.common import configure_page
 
-configure_page("Ingredients")
+configure_page()
 
-st.title("Ingredients")
+# Header row: page title left, primary "Add" button top-right.
+title_col, add_col = st.columns([5, 1], vertical_alignment="center")
+with title_col:
+    st.title("Ingredients")
+with add_col:
+    if st.button(
+        "➕ Add ingredient",
+        type="primary",
+        use_container_width=True,
+        key="add_ingredient",
+    ):
+        st.session_state.ingredients_mode = "create"
+        st.session_state.ingredients_confirm_delete_id = None
+        st.rerun()
 
 # Smaller metric values in the Details panel (owner request).
-st.markdown(
+st.html(
     """
     <style>
     [data-testid="stMetricValue"] { font-size: 1.1rem; }
     </style>
-    """,
-    unsafe_allow_html=True,
+    """
 )
 
 
@@ -229,19 +241,14 @@ def _render_edit_form(conn, record: dict | None) -> None:
 left, right = st.columns([3, 1], gap="small")
 
 with left:
-    st.subheader("Ingredients")
-    if st.button("➕ Add ingredient", use_container_width=True):
-        st.session_state.ingredients_mode = "create"
-        st.session_state.ingredients_confirm_delete_id = None
-        st.rerun()
-
     if df.empty:
         st.info("No ingredients yet — add your first one.")
     else:
-        # Lean table: item code, item description and custom fields stay
-        # visible in the Details panel only (frontend/ingredients/README.md §4).
+        # Lean table: internal id, item code, item description and custom
+        # fields stay visible in the Details panel only
+        # (frontend/ingredients/README.md §4).
         table_df = df.drop(
-            columns=["item_code", "item_description", "custom_fields"]
+            columns=["id", "item_code", "item_description", "custom_fields"]
         )
         event = st.dataframe(
             table_df,

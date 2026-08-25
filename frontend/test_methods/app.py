@@ -2,7 +2,7 @@ import streamlit as st
 
 from frontend.common import configure_page
 
-configure_page("Test Methods")
+configure_page()
 
 st.title("Test Methods")
 

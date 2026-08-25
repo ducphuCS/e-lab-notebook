@@ -2,7 +2,7 @@ import streamlit as st
 
 from frontend.common import configure_page
 
-configure_page("Dashboard")
+configure_page()
 
 st.title("Dashboard")
 
