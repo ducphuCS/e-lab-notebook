@@ -21,10 +21,21 @@ from frontend.ingredients.utils import (
     custom_fields_from_df,
     custom_fields_to_df,
 )
+from frontend.common import configure_page
 
-st.set_page_config(page_title="Ingredients", layout="wide")
+configure_page("Ingredients")
 
 st.title("Ingredients")
+
+# Smaller metric values in the Details panel (owner request).
+st.markdown(
+    """
+    <style>
+    [data-testid="stMetricValue"] { font-size: 1.1rem; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 # ------------------------------------------------------------------ data
@@ -68,13 +79,16 @@ def _render_details(conn, selected_id: int | None) -> None:
     st.markdown(f"### {record['name']}")
     st.caption(f"ID {record['id']}")
 
-    f1, f2 = st.columns(2)
-    f1.write(f"**Item code:** {record['item_code'] or '—'}")
-    f2.write(f"**Supplier:** {record['supplier'] or '—'}")
-    f1.write(f"**UOM:** {record['uom'] or '—'}")
-    f2.write(f"**State:** {record['state'] or '—'}")
-    st.write(f"**Item description:** {record['item_description'] or '—'}")
-    st.write(f"**Notes:** {record['notes'] or '—'}")
+    g1a, g1b = st.columns(2)
+    g1a.metric("Item code", record["item_code"] or "—")
+    g1b.metric("Item description", record["item_description"] or "—")
+
+    g2a, g2b, g2c = st.columns(3)
+    g2a.metric("Supplier", record["supplier"] or "—")
+    g2b.metric("UOM", record["uom"] or "—")
+    g2c.metric("State", record["state"] or "—")
+
+    st.metric("Notes", record["notes"] or "—")
 
     st.divider()
     st.metric(
@@ -212,7 +226,7 @@ def _render_edit_form(conn, record: dict | None) -> None:
 
 
 # ---------------------------------------------------------------- layout
-left, right = st.columns([1, 1.3], gap="large")
+left, right = st.columns([3, 1], gap="small")
 
 with left:
     st.subheader("Ingredients")
@@ -224,8 +238,14 @@ with left:
     if df.empty:
         st.info("No ingredients yet — add your first one.")
     else:
+        # Lean table: item code, item description and custom fields stay
+        # visible in the Details panel only (frontend/ingredients/README.md §4).
+        table_df = df.drop(
+            columns=["item_code", "item_description", "custom_fields"]
+        )
         event = st.dataframe(
-            df,
+            table_df,
+            height="content",
             hide_index=True,
             selection_mode="single-row",
             on_select="rerun",

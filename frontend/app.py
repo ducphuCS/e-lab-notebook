@@ -10,9 +10,11 @@ stubs for now; replace each stub with a real page (e.g.
 """
 import streamlit as st
 
+from frontend.common import configure_page
+
 
 def main() -> None:
-    st.set_page_config(page_title="ELN v2", layout="wide")
+    configure_page("ELN v2")
 
     # Sections are defined via a mapping: each key is the section header,
     # each value the list of pages in that section.

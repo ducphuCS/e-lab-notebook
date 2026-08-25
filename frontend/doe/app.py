@@ -7,8 +7,9 @@ from frontend.doe.validators import (
     validate_formulations_df,
     validate_levels_df,
 )
+from frontend.common import configure_page
 
-st.set_page_config(page_title="DOE", layout="wide")
+configure_page("DOE")
 
 st.title("DOE")
 

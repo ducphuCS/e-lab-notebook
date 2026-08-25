@@ -52,11 +52,14 @@ already use `item_code` / `item_description`.
 
 Two columns:
 
-- **Left column** — the full list of ingredients (read-only table). Selecting a
-  row populates the right column.
+- **Left column** — the full list of ingredients (read-only table; grows to
+  show all rows). Selecting a row populates the right column.
 - **Right column** — details and related information of the selected
   ingredient:
-  - number of formulas using this ingredient,
+  - attributes grouped in rows to avoid scrolling: item code + item
+    description (2 cols), supplier + UOM + state (3 cols), notes on its own
+    row,
+  - number of formulas using this ingredient (metric),
   - custom fields (editable key/value pairs),
   - add/edit form and delete button.
   When nothing is selected, show a placeholder ("Select an ingredient…").

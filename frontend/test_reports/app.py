@@ -1,6 +1,8 @@
 import streamlit as st
 
-st.set_page_config(page_title="Test Reports", layout="wide")
+from frontend.common import configure_page
+
+configure_page("Test Reports")
 
 st.title("Test Reports")
 
