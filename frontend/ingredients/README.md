@@ -96,6 +96,9 @@ DBs, never the dev DB.
   No sync/import in v0 — fields are filled manually.
 - **Formulas** (Library): count of formulas using this ingredient (details
   panel). Formulas is a stub — the count will be a placeholder until it lands.
+  When Formulas lands, the ingredient master also gains a unit-cost field
+  (cost per uom) so formulas can derive cost contributions (Formulas letter
+  Q8; decision log 2026-08-26).
 - **DOE** (Analyze): reads `item_code` / `item_description` — keep field
   naming consistent.
 
@@ -198,3 +201,4 @@ source of truth as it evolves.*
 | 2026-08-24 | Q4: custom fields per-ingredient key/value, JSON column in v0; EAV as evolution path | ducphu |
 | 2026-08-24 | Q5: add optional `uom` and `state` fields | ducphu |
 | 2026-08-24 | Q6: minimal seam now — SQLite service + thin gateway; page calls gateway in-process | ducphu |
+| 2026-08-26 | Planned: ingredient master gains a unit-cost field (cost per uom) when the Formulas module lands (Formulas letter Q8); not implemented yet | ducphu |
