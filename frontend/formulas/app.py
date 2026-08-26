@@ -17,7 +17,7 @@ from backend.services.formulas.store import DEV_DB_PATH
 
 from frontend.common import configure_page
 from frontend.formulas.dialogs import delete_dialog, duplicate_dialog, form_dialog
-from frontend.formulas.utils import formula_stats
+from frontend.formulas.utils import FORMULAS_TABLE_KEY, formula_stats
 
 configure_page()
 
@@ -75,12 +75,17 @@ else:
         hide_index=True,
         selection_mode="single-row",
         on_select="rerun",
-        key="formulas_table",
+        key=FORMULAS_TABLE_KEY,
         width="stretch",
+        # id stays in df (selection maps back via df.iloc[idx]["id"]) but
+        # is hidden from the rendered table (README Q14-style polish).
+        column_config={"id": None},
     )
 
     selected_id = None
-    if event.selection.rows:
+    if event.selection.rows and event.selection.rows[0] < len(df):
+        # The selection can survive a delete one index past the end of the
+        # now-smaller table (frontend keeps the stale row index); guard it.
         selected_id = int(df.iloc[event.selection.rows[0]]["id"])
 
     if selected_id is None:
@@ -94,8 +99,13 @@ else:
             if c1.button(
                 "Open detail", type="primary", use_container_width=True
             ):
-                st.query_params["formula_id"] = str(record["id"])
-                st.switch_page("formulas/detail.py")
+                # switch_page clears existing query params on navigation, so
+                # the formula id must travel via its query_params argument
+                # (st.query_params set before the switch would be wiped).
+                st.switch_page(
+                    "formulas/detail.py",
+                    query_params={"formula_id": str(record["id"])},
+                )
             if c2.button("✏️ Edit", use_container_width=True):
                 form_dialog(conn, record)
             if c3.button("📋 Duplicate", use_container_width=True):

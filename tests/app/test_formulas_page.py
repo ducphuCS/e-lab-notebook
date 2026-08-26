@@ -77,6 +77,45 @@ def test_overview_lists_seeded_formulas(db_path) -> None:
     assert list(df["batches"]) == [0, 0]  # placeholder stats
 
 
+def test_stale_selection_after_delete_does_not_crash(db_path) -> None:
+    """Deleting a selected row leaves the frontend holding the old row
+    index; the overview must not index past the end of the smaller table
+    (regression: 'single positional indexer is out-of-bounds')."""
+    conn = gw.connect(db_path)
+    try:
+        first = gw.create_formula(conn, {"name": "Emulsion X", "status": "draft"})
+        second = gw.create_formula(conn, {"name": "Oil Base", "status": "active"})
+    finally:
+        conn.close()
+
+    at = _page()
+    at.run()
+    # user selects the second row (index 1) -> frontend stores rows=[1]
+    from frontend.formulas.utils import FORMULAS_TABLE_KEY
+
+    at.session_state[FORMULAS_TABLE_KEY] = {"selection": {"rows": [1]}}
+    at.run()
+    assert not at.exception
+    assert any(b.label == "🗑️ Delete" for b in at.button)
+    assert not any("Select a formula" in c.value for c in at.caption)
+
+    # the second formula is deleted; the frontend echoes the STALE selection
+    # (rows=[1]) on the rerun, like the real app after the delete dialog.
+    conn = gw.connect(db_path)
+    try:
+        gw.delete_formula(conn, second["id"])
+    finally:
+        conn.close()
+    at.session_state[FORMULAS_TABLE_KEY] = {"selection": {"rows": [1]}}
+    at.run()
+    assert not at.exception
+    assert len(at.dataframe[0].value) == 1
+    # out-of-bounds selection is ignored -> prompt to select, no buttons
+    assert any("Select a formula" in c.value for c in at.caption)
+    assert not any(b.label == "🗑️ Delete" for b in at.button)
+    assert first["id"] in set(at.dataframe[0].value["id"])
+
+
 def test_detail_page_loads_via_session_state(db_path) -> None:
     """Detail page with the formula id from session_state (AppTest cannot
     set query params)."""
@@ -91,7 +130,7 @@ def test_detail_page_loads_via_session_state(db_path) -> None:
     at.run()
     assert not at.exception
     assert at.title[0].value == "Emulsion X"
-    assert any("version 1" in c.value for c in at.caption)
+    assert any("Version: 1" in c.value for c in at.caption)
     # all six tabs render
     assert len(at.tabs) == 6
 

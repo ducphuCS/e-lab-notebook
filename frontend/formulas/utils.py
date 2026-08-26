@@ -13,6 +13,10 @@ PARAMS_EDITOR_COLUMNS = ("parameter", "source", "aggregation", "value")
 PROCEDURE_EDITOR_COLUMNS = ("name", "ingredients", "equipment", "duration", "params")
 CUSTOM_FIELD_COLUMNS = ("key", "value")
 
+# Overview table widget key — its selection can go stale when a selected row
+# is deleted; the delete dialog resets it (see dialogs.delete_dialog).
+FORMULAS_TABLE_KEY = "formulas_table"
+
 # Composition display columns (detail tab / version diff).
 COMPOSITION_DISPLAY_COLUMNS = ("no", "ingredient", "role", "amount", "uom", "notes")
 

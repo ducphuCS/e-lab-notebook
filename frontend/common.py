@@ -23,8 +23,19 @@ _TOP_PADDING_CSS = """
 </style>
 """
 
+# The default Streamlit header (menu / deploy toolbar, `header[data-testid="stHeader"]`)
+# overlaps page content and blocks the top-of-page buttons (e.g. the detail page's
+# "← Back to overview"); hide it app-wide (owner request).
+_HIDE_HEADER_CSS = """
+<style>
+header[data-testid="stHeader"] {
+    display: none;
+}
+</style>
+"""
+
 
 def configure_page() -> None:
-    """Set page config (constant window title) and apply the shared top-padding tweak."""
+    """Set page config (constant window title) and apply the shared CSS tweaks."""
     st.set_page_config(page_title=APP_TITLE, layout="wide")
-    st.markdown(_TOP_PADDING_CSS, unsafe_allow_html=True)
+    st.markdown(_TOP_PADDING_CSS + _HIDE_HEADER_CSS, unsafe_allow_html=True)

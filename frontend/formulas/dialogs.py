@@ -17,6 +17,7 @@ from backend.services.formulas.schema import FORMULA_STATUSES, PARAM_AGGREGATION
 from backend.services.ingredients.store import DEV_DB_PATH as INGREDIENTS_DB_PATH
 
 from frontend.formulas.utils import (
+    FORMULAS_TABLE_KEY,
     build_formula_payload,
     composition_from_df,
     composition_to_df,
@@ -206,6 +207,12 @@ def delete_dialog(conn: Any, record: dict) -> None:
             st.error(f"Delete failed: {exc}")
         else:
             st.toast("Formula deleted.")
+            # The deleted row was selected; drop the stale selection so the
+            # overview table does not keep an out-of-bounds index on rerun.
+            if FORMULAS_TABLE_KEY in st.session_state:
+                st.session_state[FORMULAS_TABLE_KEY] = {
+                    "selection": {"rows": []}
+                }
             st.rerun()
     if c2.button("Cancel", key="cancel_delete"):
         st.rerun()

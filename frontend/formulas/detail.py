@@ -33,7 +33,7 @@ conn = st.session_state.formulas_conn
 back_col, _ = st.columns([5, 1], vertical_alignment="center")
 with back_col:
     if st.button("← Back to overview", key="back_overview"):
-        st.query_params.clear()
+        # switch_page clears query params on navigation (formula_id included).
         st.switch_page("formulas/app.py")
 
 raw_id = st.query_params.get("formula_id")
@@ -58,7 +58,7 @@ title_col, actions_col = st.columns([5, 1], vertical_alignment="center")
 with title_col:
     st.title(record["name"])
     st.caption(
-        f"ID {record['id']} · version {record['version']} · {record['status']}"
+        f"ID {record['id']} · Version: {record['version']} · Status: {record['status']}"
     )
 with actions_col:
     if st.button(
