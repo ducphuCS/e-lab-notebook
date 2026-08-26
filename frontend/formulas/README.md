@@ -192,6 +192,11 @@ Mirrors the Ingredients test layout (`docs/TEST_STRATEGIES.md`):
   fixtures with mocked transport (`tests/contracts/`).
 - **App behavior:** `tests/app/test_formulas_page.py` with the gateway
   **faked** at the boundary (mirrors `tests/app/test_ingredients_page.py`).
+  Note: streamlit 1.60's `testing.v1` has no `st.dialog` support, so dialog
+  *submission* flows (create/edit/delete/duplicate) are not drivable from
+  AppTest — they are covered by the service/gateway/contract tests and the
+  frontend utils tests instead. AppTest covers page loads, rendering, and
+  dialog opening (see decision log 2026-08-26).
 
 ## 9. Questions & Resolutions
 
@@ -385,3 +390,4 @@ source of truth as it evolves.*
 | 2026-08-26 | Versioning: new version only on composition change; status-only edits never bump; Versions tab = count + composition side-by-side diff; "save as a version" deferred | ducphu |
 | 2026-08-26 | Costs: unit cost per uom added to the ingredient master when Formulas lands; formula cost = Σ(amount × unit cost) with same-unit guard; procedure cost out of scope | ducphu |
 | 2026-08-26 | Navigation: hidden child page (`visibility="hidden"`) + `st.switch_page`, formula id via `st.query_params` | ducphu |
+| 2026-08-26 | Finding: streamlit 1.60 `testing.v1` has no `st.dialog` support — dialog submission flows are covered at the service/contract/utils layers; AppTest covers loads/rendering/dialog-opening (README §8) | ducphu |

@@ -66,6 +66,17 @@ def main() -> None:
                 url_path="formulas",
             ),
             st.Page(
+                "formulas/detail.py",
+                title="Formula Detail",
+                icon=":material/tab:",
+                # st.navigation in streamlit 1.60 does not support nested
+                # url_paths ("foo/bar"); the detail page gets its own
+                # single-segment path and the formula id travels in
+                # st.query_params (?formula_id=3) (README Q5).
+                url_path="formula-detail",
+                visibility="hidden",
+            ),
+            st.Page(
                 "documents/app.py",
                 title="Documents",
                 icon=":material/article:",

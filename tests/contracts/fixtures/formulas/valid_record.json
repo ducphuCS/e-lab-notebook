@@ -1,0 +1,35 @@
+{
+  "id": 1,
+  "name": "Emulsion X",
+  "project": "Project A",
+  "status": "draft",
+  "family": null,
+  "owner": "ducphu",
+  "tags": ["emulsion"],
+  "description": null,
+  "custom_fields": {},
+  "composition": [
+    {
+      "no": 1,
+      "ingredient_id": 5,
+      "ingredient_name": "Water",
+      "role": "solvent",
+      "amount": 90.0,
+      "uom": "g",
+      "notes": null
+    }
+  ],
+  "params": [],
+  "procedure": [
+    {
+      "name": "Mix",
+      "ingredients": [],
+      "equipment": null,
+      "duration": null,
+      "params": {}
+    }
+  ],
+  "version": 1,
+  "created_at": "2026-08-26T10:00:00+00:00",
+  "updated_at": "2026-08-26T10:00:00+00:00"
+}

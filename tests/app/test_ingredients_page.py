@@ -95,7 +95,7 @@ def test_details_edit_and_delete_flow(db_path) -> None:
     at.run()
     assert not at.exception
     assert any(m.value.startswith("### Water") for m in at.markdown)
-    assert any("liquid" in s.value for s in at.markdown)
+    assert any(m.label == "State" and m.value == "liquid" for m in at.metric)
 
     # edit flow
     _buttons(at, "✏️ Edit")[0].click()
