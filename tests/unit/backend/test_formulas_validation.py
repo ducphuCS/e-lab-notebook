@@ -103,7 +103,7 @@ def test_procedure_step_validation() -> None:
         {
             "name": "",
             "ingredients": [{"ingredient_id": "x", "ingredient_name": "Water"}],
-            "params": {"speed": 100},
+            "params": [{"name": "", "value": 100}],
         }
     ]
     problems = validate_formula(_formula(procedure=procedure))
@@ -119,7 +119,10 @@ def test_procedure_valid_step_passes() -> None:
             "ingredients": [{"ingredient_id": 1, "ingredient_name": "Water"}],
             "equipment": "Blender",
             "duration": "5 min",
-            "params": {"speed": "1000"},
+            "params": [
+                {"name": "speed", "value": "1000", "unit": "rpm"},
+                {"name": "temp", "value": "70", "unit": "°C"},
+            ],
         }
     ]
     assert validate_formula(_formula(procedure=procedure)) == []

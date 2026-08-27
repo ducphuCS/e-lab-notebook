@@ -6,11 +6,11 @@ and frontend.doe.validators patterns: page files stay thin glue.
 """
 from __future__ import annotations
 
+import graphviz
 import pandas as pd
 
 COMPOSITION_EDITOR_COLUMNS = ("ingredient", "role", "amount", "uom", "notes")
-PARAMS_EDITOR_COLUMNS = ("parameter", "source", "aggregation", "value")
-PROCEDURE_EDITOR_COLUMNS = ("name", "ingredients", "equipment", "duration", "params")
+STEP_PARAMS_COLUMNS = ("name", "value", "unit")
 CUSTOM_FIELD_COLUMNS = ("key", "value")
 
 # Overview table widget key — its selection can go stale when a selected row
@@ -138,19 +138,6 @@ def composition_from_df(
 
 # --- params ----------------------------------------------------------------
 
-def params_to_df(params: list[dict] | None) -> pd.DataFrame:
-    rows = [
-        {
-            "parameter": p.get("parameter"),
-            "source": p.get("source"),
-            "aggregation": p.get("aggregation") or "",
-            "value": p.get("value"),
-        }
-        for p in params or []
-    ]
-    return pd.DataFrame(rows, columns=PARAMS_EDITOR_COLUMNS)
-
-
 def params_from_df(df: pd.DataFrame | None) -> list[dict]:
     """Editor DataFrame -> stored rows; rows without a parameter are dropped."""
     result: list[dict] = []
@@ -171,58 +158,41 @@ def params_from_df(df: pd.DataFrame | None) -> list[dict]:
     return result
 
 
-# --- procedure -------------------------------------------------------------
+# --- procedure (steps) -----------------------------------------------------
 
-def _params_to_text(params: dict[str, str] | None) -> str:
-    return "; ".join(f"{key}={value}" for key, value in (params or {}).items())
+def composition_step_options(
+    composition: list[dict] | None,
+) -> tuple[list[str], dict[str, int]]:
+    """(options, name -> id) of the unique ingredients used in the composition.
 
-
-def _params_from_text(text: str) -> dict[str, str]:
-    result: dict[str, str] = {}
-    for part in (text or "").split(";"):
-        part = part.strip()
-        if not part:
-            continue
-        if "=" in part:
-            key, value = part.split("=", 1)
-            result[key.strip()] = value.strip()
-        else:
-            result[part] = ""
-    return result
-
-
-def _ingredients_to_text(ingredients: list[dict] | None) -> str:
-    names = [
-        item.get("ingredient_name", "")
-        for item in ingredients or []
-        if item.get("ingredient_name")
-    ]
-    return ", ".join(names)
+    Step subjects are constrained to composition ingredients (README
+    decision 2026-08-27) — a step can never introduce an ingredient the
+    formula does not contain, so every procedure ingredient is always
+    reflected in the composition.
+    """
+    seen: dict[str, int] = {}
+    for row in composition or []:
+        name = (row.get("ingredient_name") or "").strip()
+        if name and name not in seen:
+            seen[name] = int(row["ingredient_id"])
+    return list(seen), seen
 
 
-def procedure_to_df(procedure: list[dict] | None) -> pd.DataFrame:
+def step_params_to_df(params: list[dict] | None) -> pd.DataFrame:
+    """Processing params (name/value/unit rows) -> editor DataFrame."""
     rows = [
         {
-            "name": step.get("name"),
-            "ingredients": _ingredients_to_text(step.get("ingredients")),
-            "equipment": step.get("equipment"),
-            "duration": step.get("duration"),
-            "params": _params_to_text(step.get("params")),
+            "name": p.get("name"),
+            "value": p.get("value"),
+            "unit": p.get("unit"),
         }
-        for step in procedure or []
+        for p in params or []
     ]
-    return pd.DataFrame(rows, columns=PROCEDURE_EDITOR_COLUMNS)
+    return pd.DataFrame(rows, columns=STEP_PARAMS_COLUMNS)
 
 
-def procedure_from_df(
-    df: pd.DataFrame | None, name_to_id: dict[str, int]
-) -> list[dict]:
-    """Editor DataFrame -> stored steps.
-
-    Ingredients are comma-separated display names, resolved to
-    {ingredient_id, ingredient_name} pairs; processing params are
-    "key=value; key=value" text.
-    """
+def step_params_from_df(df: pd.DataFrame | None) -> list[dict]:
+    """Editor DataFrame -> stored processing params; blank names are dropped."""
     result: list[dict] = []
     if df is None or df.empty:
         return result
@@ -230,24 +200,42 @@ def procedure_from_df(
         name = _cell_text(row.get("name")).strip()
         if not name:
             continue
-        ingredients: list[dict] = []
-        for label in _cell_text(row.get("ingredients")).split(","):
-            label = label.strip()
-            if not label:
-                continue
-            ingredients.append(
-                {"ingredient_id": name_to_id.get(label), "ingredient_name": label}
-            )
         result.append(
             {
                 "name": name,
-                "ingredients": ingredients,
-                "equipment": _cell_text(row.get("equipment")).strip() or None,
-                "duration": _cell_text(row.get("duration")).strip() or None,
-                "params": _params_from_text(_cell_text(row.get("params"))),
+                "value": _cell_text(row.get("value")).strip() or None,
+                "unit": _cell_text(row.get("unit")).strip() or None,
             }
         )
     return result
+
+
+def linear_flow_digraph(
+    steps: list[dict], selected: int | None = None
+) -> graphviz.Digraph:
+    """Top-to-bottom linear flow graph of the procedure steps (v0).
+
+    One node per step, an edge from each step to the next; the selected
+    step is highlighted. Pure builder (no streamlit) so it is
+    unit-testable — the graphviz package only generates DOT text, the
+    rendering happens client-side in ``st.graphviz_chart`` (dagre-d3).
+    """
+    digraph = graphviz.Digraph()
+    digraph.attr(rankdir="TB", nodesep="0.4", ranksep="0.5")
+    for i, step in enumerate(steps):
+        name = step.get("name") or ""
+        node_id = f"step_{i + 1}"
+        digraph.node(
+            node_id,
+            shape="box",
+            style="rounded,filled",
+            fillcolor="#e8f0fe" if i == selected else "#f7f7f8",
+            color="#1f6feb" if i == selected else "#d3d3d3",
+            label=f"{i + 1}. {name}",
+        )
+        if i > 0:
+            digraph.edge(f"step_{i}", node_id)
+    return digraph
 
 
 # --- payload ---------------------------------------------------------------

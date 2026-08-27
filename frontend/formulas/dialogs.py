@@ -13,21 +13,20 @@ import streamlit as st
 
 from backend.gateway import formulas as gw
 from backend.gateway import ingredients as igw
-from backend.services.formulas.schema import FORMULA_STATUSES, PARAM_AGGREGATIONS
+from backend.services.formulas.schema import FORMULA_STATUSES
 from backend.services.ingredients.store import DEV_DB_PATH as INGREDIENTS_DB_PATH
 
 from frontend.formulas.utils import (
     FORMULAS_TABLE_KEY,
     build_formula_payload,
     composition_from_df,
+    composition_step_options,
     composition_to_df,
     custom_fields_from_df,
     custom_fields_to_df,
     ingredient_options,
-    params_from_df,
-    params_to_df,
-    procedure_from_df,
-    procedure_to_df,
+    step_params_from_df,
+    step_params_to_df,
     tags_to_text,
 )
 
@@ -46,9 +45,14 @@ def _load_ingredients() -> list[dict]:
         return []
 
 
-@st.dialog("Formula")
+@st.dialog("Formula", width="medium")
 def form_dialog(conn: Any, record: dict | None) -> None:
-    """Create (record=None) or edit (record=dict) dialog (README Q4/Q13)."""
+    """Create (record=None) or edit (record=dict) dialog (README Q4/Q13).
+
+    width="medium" (~750px) — the form carries two data editors, so the
+    default 500px dialog was too cramped. Params and procedure are edited
+    from their own panels, not here.
+    """
     is_edit = record is not None
     record = record or {}
     record_id = record.get("id", "new")
@@ -104,47 +108,6 @@ def form_dialog(conn: Any, record: dict | None) -> None:
             key=f"composition_{record_id}",
         )
 
-        st.write("**Params**")
-        st.caption(
-            "Theoretical params — source is an ingredient custom field, "
-            "aggregation says how values combine (evaluation is a later phase)."
-        )
-        params_editor = st.data_editor(
-            params_to_df(record.get("params")),
-            num_rows="dynamic",
-            hide_index=True,
-            width="stretch",
-            column_config={
-                "parameter": st.column_config.TextColumn("Parameter", required=True),
-                "source": st.column_config.TextColumn("Source custom field"),
-                "aggregation": st.column_config.SelectboxColumn(
-                    "Aggregation", options=list(PARAM_AGGREGATIONS)
-                ),
-                "value": st.column_config.TextColumn("Value"),
-            },
-            key=f"params_{record_id}",
-        )
-
-        st.write("**Procedure**")
-        st.caption(
-            "Ingredients: comma-separated names from the master. "
-            "Params: key=value pairs separated by ';'."
-        )
-        procedure_editor = st.data_editor(
-            procedure_to_df(record.get("procedure")),
-            num_rows="dynamic",
-            hide_index=True,
-            width="stretch",
-            column_config={
-                "name": st.column_config.TextColumn("Step name", required=True),
-                "ingredients": st.column_config.TextColumn("Ingredients"),
-                "equipment": st.column_config.TextColumn("Equipment"),
-                "duration": st.column_config.TextColumn("Duration"),
-                "params": st.column_config.TextColumn("Processing params"),
-            },
-            key=f"procedure_{record_id}",
-        )
-
         st.write("**Custom fields**")
         custom_editor = st.data_editor(
             custom_fields_to_df(record.get("custom_fields")),
@@ -173,8 +136,10 @@ def form_dialog(conn: Any, record: dict | None) -> None:
             description=description,
             custom_fields=custom_fields_from_df(custom_editor),
             composition=composition_from_df(composition_editor, name_to_id),
-            params=params_from_df(params_editor),
-            procedure=procedure_from_df(procedure_editor, name_to_id),
+            # Params and procedure are NOT edited here — the gateway merges
+            # the payload over the current record, so omitting them preserves
+            # the existing values on edit (empty on create). They get their
+            # own editors in their panels.
         )
         try:
             # st.toast survives the rerun below (st.success would not).
@@ -189,6 +154,113 @@ def form_dialog(conn: Any, record: dict | None) -> None:
             st.error("Could not save formula:\n- " + "\n- ".join(problems))
         else:
             st.rerun()
+
+
+@st.dialog("Step", width="medium")
+def step_dialog(conn: Any, record: dict, index: int | None) -> None:
+    """Create (index=None) or edit (index=int) one procedure step.
+
+    Steps are added one at a time (README decision 2026-08-27): the
+    subjects (ingredients) are multi-selected from the composition only,
+    and the attributes are name/value/unit processing params.
+    """
+    is_edit = index is not None
+    st.markdown(f"### {'Edit step' if is_edit else 'Add step'}")
+    procedure = record.get("procedure") or []
+    step = (
+        procedure[index]
+        if is_edit and isinstance(index, int) and 0 <= index < len(procedure)
+        else {}
+    )
+    options, name_to_id = composition_step_options(record.get("composition"))
+    existing = [
+        ing.get("ingredient_name")
+        for ing in step.get("ingredients") or []
+        if ing.get("ingredient_name") in options
+    ]
+
+    with st.form(f"step_form_{record['id']}_{index}"):
+        name = st.text_input("Step name *", value=step.get("name", ""))
+        subjects = st.multiselect(
+            "Subjects (ingredients) — from the composition",
+            options,
+            default=existing,
+            help="Only ingredients already in the composition can be used.",
+        )
+        c1, c2 = st.columns(2)
+        equipment = c1.text_input(
+            "Equipment", value=step.get("equipment") or ""
+        )
+        duration = c2.text_input("Duration", value=step.get("duration") or "")
+
+        st.write("**Processing parameters**")
+        st.caption("Name, value and unit per attribute.")
+        params_editor = st.data_editor(
+            step_params_to_df(step.get("params")),
+            num_rows="dynamic",
+            hide_index=True,
+            width="stretch",
+            column_config={
+                "name": st.column_config.TextColumn("Name"),
+                "value": st.column_config.TextColumn("Value"),
+                "unit": st.column_config.TextColumn("Unit"),
+            },
+            key=f"step_params_{record['id']}_{index}",
+        )
+        submitted = st.form_submit_button("Save", type="primary")
+
+    if st.button("Cancel", key=f"cancel_step_{record['id']}_{index}"):
+        st.rerun()
+
+    if submitted:
+        new_step = {
+            "name": name.strip(),
+            "ingredients": [
+                {"ingredient_id": name_to_id[label], "ingredient_name": label}
+                for label in subjects
+            ],
+            "equipment": equipment.strip() or None,
+            "duration": duration.strip() or None,
+            "params": step_params_from_df(params_editor),
+        }
+        new_procedure = list(procedure)
+        if is_edit:
+            new_procedure[index] = new_step
+        else:
+            new_procedure.append(new_step)
+        try:
+            # Params/procedure live outside the create/edit dialog; the
+            # gateway merges, so the rest of the formula is untouched.
+            gw.update_formula(conn, record["id"], {"procedure": new_procedure})
+        except gw.GatewayError as exc:
+            problems = exc.problems or [str(exc)]
+            st.error("Could not save step:\n- " + "\n- ".join(problems))
+        else:
+            st.toast("Step saved.")
+            st.rerun()
+
+
+@st.dialog("Delete step")
+def delete_step_dialog(conn: Any, record: dict, index: int) -> None:
+    """Delete one procedure step (confirm)."""
+    procedure = record.get("procedure") or []
+    step = procedure[index] if 0 <= index < len(procedure) else {}
+    st.warning(
+        f"Delete step **{step.get('name', '?')}** ({index + 1})? "
+        "This cannot be undone."
+    )
+    c1, c2 = st.columns(2)
+    if c1.button("Confirm delete", type="primary"):
+        new_procedure = [s for i, s in enumerate(procedure) if i != index]
+        try:
+            gw.update_formula(conn, record["id"], {"procedure": new_procedure})
+        except gw.GatewayError as exc:
+            st.error(f"Delete failed: {exc}")
+        else:
+            st.toast("Step deleted.")
+            st.rerun()
+    if c2.button("Cancel", key="cancel_step_delete"):
+        st.rerun()
 
 
 @st.dialog("Delete formula")

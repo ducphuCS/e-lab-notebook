@@ -170,18 +170,24 @@ def _validate_procedure(procedure: Any) -> list[str]:
 
         params = step.get("params")
         if params is not None:
-            if not isinstance(params, dict):
-                problems.append(f"{label}: params must be a mapping of key -> value.")
+            if not isinstance(params, list):
+                problems.append(
+                    f"{label}: params must be a list of attributes "
+                    "(name, value, unit)."
+                )
             else:
-                for key, value in params.items():
-                    if not isinstance(key, str) or not key.strip():
-                        problems.append(
-                            f"{label}: params keys must be non-empty strings."
-                        )
-                        break
-                    if not isinstance(value, str):
-                        problems.append(
-                            f"{label}: params value for '{key}' must be a string."
-                        )
-                        break
+                for j, item in enumerate(params):
+                    p_label = f"{label} params item {j + 1}"
+                    if not isinstance(item, dict):
+                        problems.append(f"{p_label} must be an object.")
+                        continue
+                    if not isinstance(item.get("name"), str) or not item.get(
+                        "name"
+                    ).strip():
+                        problems.append(f"{p_label}: name is required.")
+                    for field in ("value", "unit"):
+                        if not _string_field_ok(item.get(field)):
+                            problems.append(
+                                f"{p_label}: {field} must be a string."
+                            )
     return problems

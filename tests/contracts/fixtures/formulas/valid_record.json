@@ -26,7 +26,9 @@
       "ingredients": [],
       "equipment": null,
       "duration": null,
-      "params": {}
+      "params": [
+        {"name": "speed", "value": "1000", "unit": "rpm"}
+      ]
     }
   ],
   "version": 1,

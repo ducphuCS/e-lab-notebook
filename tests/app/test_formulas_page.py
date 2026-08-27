@@ -133,6 +133,69 @@ def test_detail_page_loads_via_session_state(db_path) -> None:
     assert any("Version: 1" in c.value for c in at.caption)
     # all six tabs render
     assert len(at.tabs) == 6
+    # empty procedure -> empty state + add-step entry point
+    assert any("No procedure defined" in i.value for i in at.info)
+    assert any(b.label == "➕ Add step" for b in at.button)
+
+
+def test_detail_procedure_panel_renders(db_path) -> None:
+    """The Procedure panel renders steps, graph, details and actions.
+
+    All tabs execute eagerly, so the Procedure panel's widgets are in the
+    tree even though the Overview tab is the active one. Dialog submission
+    is not drivable from AppTest (see module docstring); the step payload
+    builder is covered by the utils tests.
+    """
+    conn = gw.connect(db_path)
+    try:
+        record = gw.create_formula(
+            conn,
+            {
+                "name": "Emulsion X",
+                "status": "draft",
+                "composition": [
+                    {
+                        "no": 1,
+                        "ingredient_id": 1,
+                        "ingredient_name": "Water",
+                        "role": "solvent",
+                        "amount": 90.0,
+                        "uom": "g",
+                        "notes": None,
+                    }
+                ],
+                "procedure": [
+                    {
+                        "name": "Mix",
+                        "ingredients": [
+                            {"ingredient_id": 1, "ingredient_name": "Water"}
+                        ],
+                        "equipment": "Blender",
+                        "duration": "5 min",
+                        "params": [
+                            {"name": "speed", "value": "1000", "unit": "rpm"}
+                        ],
+                    }
+                ],
+            },
+        )
+    finally:
+        conn.close()
+
+    at = AppTest.from_file("frontend/formulas/detail.py")
+    at.session_state["formulas_detail_id"] = record["id"]
+    at.run()
+    assert not at.exception
+    # step list radio shows the step (AppTest reports formatted labels)
+    assert any(r.options == ["1. Mix"] and r.value == 0 for r in at.radio)
+    # step actions render
+    assert any(b.label == "➕ Add" for b in at.button)
+    assert any(b.label == "✏️ Edit" for b in at.button)
+    assert any(b.label == "🗑️ Delete" for b in at.button)
+    # subjects + processing params of the selected step render
+    assert any("Subjects (ingredients)" in m.value for m in at.markdown)
+    assert any("Processing parameters" in m.value for m in at.markdown)
+    assert any("Water" in m.value for m in at.markdown)
 
 
 def test_detail_page_missing_formula(db_path) -> None:

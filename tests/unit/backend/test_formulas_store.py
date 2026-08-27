@@ -36,7 +36,7 @@ def _payload(**overrides) -> dict:
                 "ingredients": [],
                 "equipment": None,
                 "duration": None,
-                "params": {},
+                "params": [],
             }
         ],
     }

@@ -7,13 +7,15 @@ import pandas as pd
 from frontend.formulas.utils import (
     build_formula_payload,
     composition_from_df,
+    composition_step_options,
     composition_to_df,
     derive_percentages,
     diff_compositions,
     formula_stats,
     ingredient_options,
+    linear_flow_digraph,
     params_from_df,
-    procedure_from_df,
+    step_params_from_df,
     tags_from_text,
     tags_to_text,
 )
@@ -99,41 +101,63 @@ def test_params_from_df_drops_blank_parameter() -> None:
     }
 
 
-def test_procedure_from_df_parses_ingredients_and_params() -> None:
-    df = pd.DataFrame(
-        {
-            "name": ["Mix"],
-            "ingredients": ["Water · W-1, Oil"],
-            "equipment": ["Blender"],
-            "duration": ["5 min"],
-            "params": ["speed=1000; temp=70"],
-        }
-    )
-    steps = procedure_from_df(df, {"Water · W-1": 1, "Oil": 2})
-    assert len(steps) == 1
-    assert steps[0]["name"] == "Mix"
-    assert steps[0]["ingredients"] == [
+def test_composition_step_options_unique() -> None:
+    composition = [
         {"ingredient_id": 1, "ingredient_name": "Water · W-1"},
         {"ingredient_id": 2, "ingredient_name": "Oil"},
+        {"ingredient_id": 1, "ingredient_name": "Water · W-1"},
     ]
-    assert steps[0]["equipment"] == "Blender"
-    assert steps[0]["duration"] == "5 min"
-    assert steps[0]["params"] == {"speed": "1000", "temp": "70"}
+    options, name_to_id = composition_step_options(composition)
+    assert options == ["Water · W-1", "Oil"]
+    assert name_to_id == {"Water · W-1": 1, "Oil": 2}
+    assert composition_step_options(None) == ([], {})
 
 
-def test_procedure_from_df_drops_blank_steps() -> None:
+def test_step_params_from_df_parses_name_value_unit() -> None:
     df = pd.DataFrame(
         {
-            "name": ["", "Mix"],
-            "ingredients": ["", ""],
-            "equipment": ["", ""],
-            "duration": ["", ""],
-            "params": ["", ""],
+            "name": ["speed", "temp", ""],
+            "value": ["1000", "70", "9"],
+            "unit": ["rpm", "°C", "x"],
         }
     )
-    steps = procedure_from_df(df, {})
-    assert len(steps) == 1
-    assert steps[0]["name"] == "Mix"
+    params = step_params_from_df(df)
+    assert params == [
+        {"name": "speed", "value": "1000", "unit": "rpm"},
+        {"name": "temp", "value": "70", "unit": "°C"},
+    ]
+
+
+def test_step_params_from_df_drops_blank_rows() -> None:
+    assert step_params_from_df(None) == []
+    blank = pd.DataFrame(
+        {"name": [""], "value": [""], "unit": [""]}
+    )
+    assert step_params_from_df(blank) == []
+
+
+def test_linear_flow_digraph_renders_linear_graph() -> None:
+    steps = [{"name": "Mix"}, {"name": "Heat"}, {"name": "Cool"}]
+    digraph = linear_flow_digraph(steps, selected=1)
+    source = digraph.source
+    assert "rankdir=TB" in source  # top-to-bottom flow
+    assert "step_1 -> step_2" in source
+    assert "step_2 -> step_3" in source
+    assert "Mix" in source and "Heat" in source and "Cool" in source
+    # the selected step is highlighted, the others are not
+    assert 'fillcolor="#e8f0fe"' in source
+    assert 'fillcolor="#f7f7f8"' in source
+
+
+def test_linear_flow_digraph_single_step_has_no_edges() -> None:
+    digraph = linear_flow_digraph([{"name": "Mix"}])
+    source = digraph.source
+    assert "->" not in source
+    assert "Mix" in source
+
+
+def test_linear_flow_digraph_empty() -> None:
+    assert "digraph" in linear_flow_digraph([]).source
 
 
 def test_build_payload_blank_to_none() -> None:

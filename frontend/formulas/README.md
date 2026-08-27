@@ -53,6 +53,9 @@ therefore, formulas are also linked with test reports.
   (owner: procedure cost is unnecessary complexity for now; Q8).
 - Sub-ingredients / premixes — treat as regular ingredients in the master
   for now; re-discuss later (Q1).
+- Procedure flow beyond linear — v0 shows a simple linear sequence of
+  steps (no loops, no branches, no parallel steps); richer flows are
+  re-discussed later (Procedure panel decision 2026-08-27).
 
 ## 3. User flows
 
@@ -66,6 +69,12 @@ therefore, formulas are also linked with test reports.
 - As a user I can duplicate a formula (fast start for the next iteration).
 - As a user I can see which batches, samples and test reports were produced
   from a formula.
+- As a user I can read a formula's procedure as a simple linear graph and
+  inspect each step's details (ingredients, equipment, duration, processing
+  params) from the Procedure panel.
+- As a user I can build a formula's procedure one step at a time: each
+  step draws its subjects (ingredients) from the composition and carries
+  its own equipment, duration and processing parameters (name/value/unit).
 
 ## 4. Layout
 
@@ -82,9 +91,13 @@ Two views — overview and detail — over one sidebar entry (Q5):
     ingredient unit cost, Q8), notes.
   - **Params** — theoretical params: parameter, value, and the formula used
     to calculate the parameter (Q3).
-  - **Procedure** — list of steps to produce samples from this formula. Each
-    step has a name, its ingredients (more than one allowed), its equipment,
-    its duration and its processing parameters (equipment-based by default,
+  - **Procedure** — the flow to produce samples from this formula, shown as
+    a simple linear graph (nodes = steps, edges = execution order; no
+    loops, no branches — for now). Three columns: the left lists the steps;
+    the middle shows the top-to-bottom flow chart (graphviz); the right
+    shows the details of the selected step. A step is its subjects
+    (ingredients, more than one allowed) plus its attributes (equipment,
+    duration, processing parameters — equipment-based by default,
     flexible).
   - **Documents** — attachments related to this formula (read-only list;
     Documents page owns attachments, Q6).
@@ -115,7 +128,7 @@ data.
 | custom_fields | json | no | Per-formula key/value map (same pattern as Ingredients). |
 | composition | json | no | Rows: {no, ingredient_id, role, amount, uom, notes}; percentage and cost contribution derived in UI (Q1, Q8, Q10). |
 | params | json | no | Rows: {parameter, source (ingredient custom field), aggregation, value} — the definition is stored; evaluation is a later phase (Q3). |
-| procedure | json | no | Steps: {name, ingredient_ids[], equipment, duration, params{}} (Q11). |
+| procedure | json | no | Steps: {name, ingredient_ids[], equipment, duration, params[{name, value, unit}]} — subjects are ingredients from the composition only; processing params are name/value/unit rows (Q11; panel decision 2026-08-27). |
 | version | integer | yes | Current version number; a new version is created only when the composition changes (Q2). |
 | created_at | text | yes | ISO timestamp. |
 | updated_at | text | yes | ISO timestamp. |
@@ -175,6 +188,16 @@ the gateway validates requests/responses (per `docs/TEST_STRATEGIES.md`).
   (AGENTS.md §5 page-folder pattern) and the sidebar stays unchanged (Q5).
 - **Composition editor**: `st.data_editor` rows inside the create/edit dialog;
   ingredient column is a selectbox over the Ingredients master (Q1).
+- **Procedure panel** — three columns: left = selectable step list
+  (radio); middle = top-to-bottom flow chart of the steps; right = details
+  of the selected step. Steps are added/edited **one at a time** via
+  `st.dialog` modals (create/edit/delete step); the subjects (ingredients)
+  are multi-selected **from the composition only**; processing parameters
+  are name/value/unit rows. The flow chart is a linear sequence for v0 (no
+  loops/branches, §2), built with the `graphviz` Python package and
+  rendered with Streamlit's built-in `st.graphviz_chart` (dagre-d3 renders
+  client-side — no system Graphviz binary needed). The create/edit dialog
+  no longer carries params/procedure (2026-08-27, §10).
 - **Validation** extracted into plain functions (frontend utils + backend
   validation), following the DOE `validators.py` / Ingredients `utils.py`
   pattern; pages stay thin glue (per `docs/TEST_STRATEGIES.md` §5).
@@ -391,3 +414,8 @@ source of truth as it evolves.*
 | 2026-08-26 | Costs: unit cost per uom added to the ingredient master when Formulas lands; formula cost = Σ(amount × unit cost) with same-unit guard; procedure cost out of scope | ducphu |
 | 2026-08-26 | Navigation: hidden child page (`visibility="hidden"`) + `st.switch_page`, formula id via `st.query_params` | ducphu |
 | 2026-08-26 | Finding: streamlit 1.60 `testing.v1` has no `st.dialog` support — dialog submission flows are covered at the service/contract/utils layers; AppTest covers loads/rendering/dialog-opening (README §8) | ducphu |
+| 2026-08-27 | Edit dialog slimmed: the Params and Procedure editors were removed from the create/edit dialog (the gateway merges the payload over the current record, so existing values are preserved); each gets its own panel editor later | ducphu |
+| 2026-08-27 | Procedure panel design: two columns — left (wider) step list, right = graph + details of the selected step; the graph is a simple linear sequence (no loops, no branches) for now; each step = its subjects (ingredients) + its attributes (equipment, duration, processing params) | ducphu |
+| 2026-08-27 | Procedure step schema: processing params are now a list of {name, value, unit} (was a key→value string map); step subjects (ingredients) are constrained to the composition — a step can never introduce an ingredient the formula does not contain | ducphu |
+| 2026-08-27 | Procedure panel implemented: left (wider) selectable step list + right linear-flow SVG graph and selected-step details; steps added/edited/deleted one at a time via st.dialog; graph is a built-in st.html inline SVG (no graphviz dependency) | ducphu |
+| 2026-08-27 | Procedure panel: three columns — left step list, middle top-to-bottom flow chart, right step details. Flow chart via the `graphviz` Python package + Streamlit's built-in `st.graphviz_chart` (dagre-d3 renders client-side, no system binary); `graphviz>=0.19` added to `pyproject.toml` (owner-approved) — supersedes the hand-rolled SVG | ducphu |

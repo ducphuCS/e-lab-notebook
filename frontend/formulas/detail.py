@@ -12,15 +12,15 @@ from backend.gateway import formulas as gw
 from backend.services.formulas.store import DEV_DB_PATH
 
 from frontend.common import configure_page
-from frontend.formulas.dialogs import form_dialog
+from frontend.formulas.dialogs import delete_step_dialog, form_dialog, step_dialog
 from frontend.formulas.utils import (
     composition_to_df,
     custom_fields_to_df,
     derive_percentages,
     diff_compositions,
     formula_stats,
-    params_to_df,
-    procedure_to_df,
+    linear_flow_digraph,
+    step_params_to_df,
 )
 
 configure_page()
@@ -163,31 +163,82 @@ def _render_params(record: dict) -> None:
     )
 
 
-def _render_procedure(record: dict) -> None:
+def _render_procedure(conn, record: dict) -> None:
+    """Three-column Procedure panel (README decision 2026-08-27):
+
+    left = selectable step list; middle = top-to-bottom flow chart (the
+    steps as nodes, rendered with st.graphviz_chart); right = details of
+    the selected step. Steps are added/edited one at a time via dialogs;
+    step subjects come from the composition only.
+    """
     procedure = record.get("procedure") or []
+    formula_id = record["id"]
+
     if not procedure:
-        st.info("No procedure defined.")
+        st.info("No procedure defined — add the first step to start the flow.")
+        if st.button("➕ Add step", type="primary", key=f"add_step_{formula_id}"):
+            step_dialog(conn, record, None)
         return
-    rows = []
-    for step in procedure:
-        ingredients = ", ".join(
+
+    sel_key = f"proc_selected_{formula_id}"
+    if sel_key in st.session_state:
+        stored = st.session_state[sel_key]
+        if not isinstance(stored, int) or not (0 <= stored < len(procedure)):
+            st.session_state[sel_key] = 0  # stale after a delete
+
+    left, middle, right = st.columns([2, 3, 2], gap="medium")
+    with left:
+        st.markdown("**Steps**")
+        step_no = st.radio(
+            "Select a step",
+            range(len(procedure)),
+            index=0,
+            format_func=lambda i: f"{i + 1}. {procedure[i]['name']}",
+            label_visibility="collapsed",
+            key=sel_key,
+        )
+    with middle:
+        st.markdown("**Flow**")
+        st.graphviz_chart(
+            linear_flow_digraph(procedure, step_no), width="stretch"
+        )
+    with right:
+        step = procedure[step_no]
+        st.markdown(f"**Step {step_no + 1} — {step['name']}**")
+
+        ingredients = [
             item.get("ingredient_name", "")
             for item in step.get("ingredients") or []
             if item.get("ingredient_name")
-        )
-        params = "; ".join(
-            f"{key}={value}" for key, value in (step.get("params") or {}).items()
-        )
-        rows.append(
-            {
-                "step": step.get("name"),
-                "ingredients": ingredients or "—",
-                "equipment": step.get("equipment") or "—",
-                "duration": step.get("duration") or "—",
-                "params": params or "—",
-            }
-        )
-    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+        ]
+        st.markdown("**Subjects (ingredients)**")
+        if ingredients:
+            st.write(", ".join(ingredients))
+        else:
+            st.caption("None — this step uses no ingredients.")
+
+        g1, g2 = st.columns(2)
+        g1.metric("Equipment", step.get("equipment") or "—")
+        g2.metric("Duration", step.get("duration") or "—")
+
+        params_df = step_params_to_df(step.get("params"))
+        st.markdown("**Processing parameters**")
+        if params_df.empty:
+            st.caption("None.")
+        else:
+            st.dataframe(params_df, hide_index=True, width="stretch")
+
+        a1, a2, a3 = st.columns(3)
+        if a1.button("➕ Add", use_container_width=True, key=f"add_step_{formula_id}"):
+            step_dialog(conn, record, None)
+        if a2.button(
+            "✏️ Edit", use_container_width=True, key=f"edit_step_{formula_id}"
+        ):
+            step_dialog(conn, record, step_no)
+        if a3.button(
+            "🗑️ Delete", use_container_width=True, key=f"del_step_{formula_id}"
+        ):
+            delete_step_dialog(conn, record, step_no)
 
 
 def _render_documents(record: dict) -> None:
@@ -280,7 +331,7 @@ with tab_composition:
 with tab_params:
     _render_params(record)
 with tab_procedure:
-    _render_procedure(record)
+    _render_procedure(conn, record)
 with tab_documents:
     _render_documents(record)
 with tab_versions:
