@@ -15,7 +15,7 @@ APP_TITLE = "Electronic Lab Notebook"
 _TOP_PADDING_CSS = """
 <style>
 .block-container {
-    padding-top: 0.5rem;
+    padding-top: 1rem;
     padding-bottom: 0.5rem;
     padding-left: 1.5rem;
     padding-right: 1.5rem;
@@ -23,19 +23,16 @@ _TOP_PADDING_CSS = """
 </style>
 """
 
-# The default Streamlit header (menu / deploy toolbar, `header[data-testid="stHeader"]`)
-# overlaps page content and blocks the top-of-page buttons (e.g. the detail page's
-# "← Back to overview"); hide it app-wide (owner request).
-_HIDE_HEADER_CSS = """
-<style>
-header[data-testid="stHeader"] {
-    display: none;
-}
-</style>
-"""
-
 
 def configure_page() -> None:
-    """Set page config (constant window title) and apply the shared CSS tweaks."""
+    """Set page config (constant window title) and apply the shared CSS tweaks.
+
+    The Streamlit header is kept native (not hidden via CSS): the sidebar's
+    reopen button (`stExpandSidebarButton`) lives inside it and must stay
+    reachable after the sidebar is collapsed. Instead, `client.toolbarMode`
+    is set to "minimal" — the built-in, scriptable option that strips the
+    menu / deploy clutter from the header.
+    """
     st.set_page_config(page_title=APP_TITLE, layout="wide")
-    st.markdown(_TOP_PADDING_CSS + _HIDE_HEADER_CSS, unsafe_allow_html=True)
+    st.set_option("client.toolbarMode", "minimal")
+    st.markdown(_TOP_PADDING_CSS, unsafe_allow_html=True)
