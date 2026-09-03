@@ -9,6 +9,7 @@ from frontend.formulas.utils import (
     composition_from_df,
     composition_step_options,
     composition_to_df,
+    delete_block_reason,
     derive_percentages,
     diff_compositions,
     formula_stats,
@@ -229,3 +230,27 @@ def test_diff_compositions_no_changes() -> None:
     old = [{"no": 1, "ingredient_name": "Water", "amount": 90.0, "uom": "g"}]
     diff = diff_compositions(old, list(old))
     assert diff["changed"] == []
+
+
+# --- delete guard (README Q12, decision log 2026-09-03) --------------------
+
+def test_delete_block_reason_none_when_no_batches() -> None:
+    assert delete_block_reason(None) is None
+    assert delete_block_reason([]) is None
+
+
+def test_delete_block_reason_lists_related_batches() -> None:
+    batches = [
+        {"id": 1, "batch_code": "B-0001", "name": "Run", "status": "planned"},
+        {"id": 2, "batch_code": "B-0002", "name": "Run 2", "status": "planned"},
+    ]
+    reason = delete_block_reason(batches)
+    assert reason is not None
+    assert "2 batches" in reason
+    assert "B-0001" in reason and "B-0002" in reason
+
+
+def test_delete_block_reason_falls_back_to_id_without_code() -> None:
+    reason = delete_block_reason([{"id": 7, "name": "Run"}])
+    assert reason is not None
+    assert "#7" in reason

@@ -8,11 +8,17 @@ Versions. Reached via st.switch_page from the overview.
 import pandas as pd
 import streamlit as st
 
+from backend.gateway import batches as bgw
 from backend.gateway import formulas as gw
 from backend.services.formulas.store import DEV_DB_PATH
 
 from frontend.common import configure_page
-from frontend.formulas.dialogs import delete_step_dialog, form_dialog, step_dialog
+from frontend.formulas.dialogs import (
+    batches_connection,
+    delete_step_dialog,
+    form_dialog,
+    step_dialog,
+)
 from frontend.formulas.utils import (
     composition_to_df,
     custom_fields_to_df,
@@ -84,10 +90,17 @@ def _render_overview(record: dict) -> None:
     g2c.metric("Updated", (record["updated_at"] or "")[:10])
 
     stats = formula_stats(record)
+    try:
+        related_batches = bgw.list_batches_by_formula(
+            batches_connection(), record["id"]
+        )
+    except bgw.GatewayError as exc:
+        st.error(f"Could not load related batches: {exc}")
+        related_batches = []
     s1, s2, s3, s4 = st.columns(4)
     s1.metric("Ingredients", stats["ingredients"])
     s2.metric("Steps", stats["steps"])
-    s3.metric("Batches", stats["batches"])
+    s3.metric("Batches", len(related_batches))
     s4.metric("Samples", stats["samples"])
 
     if record.get("description"):
@@ -104,13 +117,48 @@ def _render_overview(record: dict) -> None:
     st.divider()
     st.write("**Related records**")
     st.caption(
-        "Batches, samples and test reports produced from this formula — "
-        "placeholders until the Lab module lands (README §6)."
+        "Batches produced from this formula — real counts via the Batches "
+        "service (README §6; decision log 2026-09-03). Samples and test "
+        "reports stay placeholders until those modules land."
     )
     r1, r2, r3 = st.columns(3)
-    r1.metric("Batches", stats["batches"])
+    r1.metric("Batches", len(related_batches))
     r2.metric("Samples", stats["samples"])
     r3.metric("Test reports", 0)
+
+    if related_batches:
+        st.write("**Batches from this formula**")
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "code": row["batch_code"],
+                        "name": row["name"],
+                        "status": row["status"],
+                        "updated": (row["updated_at"] or "")[:10],
+                    }
+                    for row in related_batches
+                ]
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+        labels = [
+            f"{row['batch_code']} — {row['name']}" for row in related_batches
+        ]
+        open_col, _ = st.columns([2, 3])
+        with open_col:
+            index = st.selectbox(
+                "Open a batch",
+                range(len(related_batches)),
+                format_func=lambda i: labels[i],
+                key=f"related_batch_{record['id']}",
+            )
+            if st.button("Open batch detail", type="primary"):
+                st.switch_page(
+                    "batches/detail.py",
+                    query_params={"batch_id": str(related_batches[index]["id"])},
+                )
 
 
 def _render_composition(record: dict) -> None:

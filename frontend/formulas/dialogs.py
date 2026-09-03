@@ -11,6 +11,7 @@ from typing import Any
 
 import streamlit as st
 
+from backend.gateway import batches as bgw
 from backend.gateway import formulas as gw
 from backend.gateway import ingredients as igw
 from backend.services.formulas.schema import FORMULA_STATUSES
@@ -24,6 +25,7 @@ from frontend.formulas.utils import (
     composition_to_df,
     custom_fields_from_df,
     custom_fields_to_df,
+    delete_block_reason,
     ingredient_options,
     step_params_from_df,
     step_params_to_df,
@@ -43,6 +45,26 @@ def _load_ingredients() -> list[dict]:
     except igw.GatewayError as exc:
         st.error(f"Could not load ingredients: {exc}")
         return []
+
+
+def batches_connection() -> Any:
+    """Shared in-process connection to the Batches service (README §6).
+
+    The Formula pages read their reverse link (which batches were made
+    from a formula) from the Batches service — the same page-layer
+    cross-service pattern as ``_load_ingredients`` above. One connection
+    per session, opened lazily.
+
+    The dev-DB path is resolved at call time (not imported as a constant)
+    so AppTest's per-test monkeypatched path is honoured.
+    """
+    from backend.services.batches import store as batches_store
+
+    if "formulas_batches_conn" not in st.session_state:
+        st.session_state.formulas_batches_conn = bgw.connect(
+            batches_store.DEV_DB_PATH
+        )
+    return st.session_state.formulas_batches_conn
 
 
 @st.dialog("Formula", width="medium")
@@ -265,11 +287,36 @@ def delete_step_dialog(conn: Any, record: dict, index: int) -> None:
 
 @st.dialog("Delete formula")
 def delete_dialog(conn: Any, record: dict) -> None:
-    """Delete confirmation (README Q12 — blocked once links exist)."""
+    """Delete confirmation (README Q12 — blocked while the formula is
+    referenced by batches).
+
+    The block reason comes from the Batches service (reverse link); when
+    samples/test reports land they join the guard here (utils
+    ``delete_block_reason``). The dialog explains why when blocked — the
+    in-formulas-gateway delete itself stays unconditional (the condition
+    lives in another service; decision log 2026-09-03).
+    """
+    try:
+        related = bgw.list_batches_by_formula(batches_connection(), record["id"])
+    except bgw.GatewayError as exc:
+        st.error(f"Could not check related batches: {exc}")
+        related = []
+    reason = delete_block_reason(related)
+
+    if reason:
+        st.warning(
+            f"**{record['name']}** (ID {record['id']}) cannot be deleted — "
+            f"it is {reason} Delete these batches first. "
+            "(Sample/test-report links will join this guard when those "
+            "modules land.)"
+        )
+        if st.button("Close", key="close_delete_blocked"):
+            st.rerun()
+        return
+
     st.warning(
         f"Delete **{record['name']}** (ID {record['id']})? This cannot be "
-        "undone. Deletion is blocked once the formula has linked batches "
-        "or samples — none yet, so this is safe."
+        "undone. No batches reference this formula, so deletion is safe."
     )
     c1, c2 = st.columns(2)
     if c1.button("Confirm delete", type="primary"):

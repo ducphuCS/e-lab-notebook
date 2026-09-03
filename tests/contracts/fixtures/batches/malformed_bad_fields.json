@@ -1,0 +1,14 @@
+{
+  "id": "not-an-int",
+  "batch_code": 123,
+  "name": "",
+  "formula_id": "x",
+  "formula_name": "",
+  "formula_version": "y",
+  "planned": "not-a-dict",
+  "actual": [],
+  "status": null,
+  "owner": 3,
+  "created_at": null,
+  "updated_at": null
+}

@@ -298,7 +298,9 @@ def formula_stats(record: dict) -> dict[str, int]:
     """Attribute stats for the overview table (README §1).
 
     Batches/samples are placeholders (0) until the Lab module lands
-    (README §6).
+    (README §6). The overview and detail pages now replace ``batches``
+    with a real count from the Batches service (decision log 2026-09-03);
+    ``samples`` stays 0 until the Samples module lands.
     """
     return {
         "ingredients": len(record.get("composition") or []),
@@ -306,6 +308,24 @@ def formula_stats(record: dict) -> dict[str, int]:
         "batches": 0,
         "samples": 0,
     }
+
+
+def delete_block_reason(related_batches: list[dict] | None) -> str | None:
+    """Why a formula cannot be deleted, or None when deletion is allowed
+    (README Q12). ``related_batches`` are the light summaries from the
+    Batches service (list_batches_by_formula). Sample/test-report links
+    will join the guard when those modules land.
+    """
+    batches = related_batches or []
+    if not batches:
+        return None
+    codes = ", ".join(
+        row.get("batch_code") or f"#{row.get('id')}" for row in batches
+    )
+    return (
+        f"still referenced by {len(batches)} "
+        f"batch{'es' if len(batches) > 1 else ''}: {codes}."
+    )
 
 
 # --- versions diff ---------------------------------------------------------

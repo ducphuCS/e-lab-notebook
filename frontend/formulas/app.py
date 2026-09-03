@@ -16,8 +16,14 @@ from backend.gateway import formulas as gw
 from backend.services.formulas.store import DEV_DB_PATH
 
 from frontend.common import configure_page
-from frontend.formulas.dialogs import delete_dialog, duplicate_dialog, form_dialog
+from frontend.formulas.dialogs import (
+    batches_connection,
+    delete_dialog,
+    duplicate_dialog,
+    form_dialog,
+)
 from frontend.formulas.utils import FORMULAS_TABLE_KEY, formula_stats
+from backend.gateway import batches as bgw
 
 configure_page()
 
@@ -45,6 +51,14 @@ except gw.GatewayError as exc:
     st.error(f"Could not load formulas: {exc}")
     records = []
 
+# Real "batches made from this formula" counts come from the Batches
+# service (README §6 — reverse link; one GROUP BY call for the table).
+try:
+    batches_by_formula = bgw.count_batches_by_formula_id(batches_connection())
+except bgw.GatewayError as exc:
+    st.error(f"Could not load related batches: {exc}")
+    batches_by_formula = {}
+
 if not records:
     st.info("No formulas yet — add your first one.")
 else:
@@ -63,7 +77,7 @@ else:
                 "updated": (record["updated_at"] or "")[:10],
                 "ingredients": stats["ingredients"],
                 "steps": stats["steps"],
-                "batches": stats["batches"],
+                "batches": batches_by_formula.get(record["id"], 0),
                 "samples": stats["samples"],
             }
         )

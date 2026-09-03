@@ -1,0 +1,48 @@
+{
+  "id": 1,
+  "batch_code": "B-0001",
+  "name": "Emulsion 2500g",
+  "formula_id": 5,
+  "formula_name": "Emulsion X",
+  "formula_version": 3,
+  "planned": {
+    "target_yield": {"amount": 2500.0, "uom": "g"},
+    "composition": [
+      {
+        "no": 1,
+        "ingredient_id": 7,
+        "ingredient_name": "Water",
+        "amount": 2250.0,
+        "uom": "g",
+        "notes": null
+      }
+    ],
+    "processing": [
+      {
+        "name": "Mix",
+        "ingredients": [],
+        "equipment": "Blender",
+        "duration": "5 min",
+        "params": [{"name": "speed", "value": "1000", "unit": "rpm"}]
+      }
+    ]
+  },
+  "actual": {
+    "composition": [
+      {
+        "no": 1,
+        "ingredient_id": 7,
+        "ingredient_name": "Water",
+        "amount": 2240.0,
+        "uom": "g",
+        "note": "slightly under"
+      }
+    ],
+    "yield": {"amount": 2480.0, "uom": "g"},
+    "observations": "Ran fine."
+  },
+  "status": "in progress",
+  "owner": "ducphu",
+  "created_at": "2026-09-03T10:00:00+00:00",
+  "updated_at": "2026-09-03T11:00:00+00:00"
+}

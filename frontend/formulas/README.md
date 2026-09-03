@@ -157,11 +157,17 @@ the gateway validates requests/responses (per `docs/TEST_STRATEGIES.md`).
   per uom) — see the Ingredients letter decision log (Q8). Keep field
   naming consistent (item code / item description).
 - **Projects** (Overview): `project` is free text until Projects lands (Q9).
-- **Batches** (Lab, stub): batches are produced *from* a formula; detail
-  Overview tab shows related batches. Counts are placeholders until Batches
-  lands — the back-link (batch → formula) is decided there.
+- **Batches** (Lab, live since 2026-09-03): batches are produced *from* a
+  formula — `formula_id` is stored on the batch (that letter's Q1). The
+  Formulas detail Overview tab lists the related batches (real counts via
+  the Batches service, with links into batch detail), and the overview
+  table's "batches" column is a real count; the delete guard (Q12) now
+  blocks deleting a formula that batches reference. Page-layer
+  cross-service reads via `dialogs.batches_connection()` (one session
+  connection; decision log 2026-09-03).
 - **Samples / Test reports** (Lab, stubs): reachable through batches; same
-  placeholder treatment.
+  placeholder treatment until those modules land (the delete guard and
+  stats extend then).
 - **Documents** (Library, stub): owns attachments; the Documents tab shows a
   read-only list of linked documents (Q6).
 - **Equipment** (Library, stub): procedure steps reference equipment by name
@@ -419,3 +425,4 @@ source of truth as it evolves.*
 | 2026-08-27 | Procedure step schema: processing params are now a list of {name, value, unit} (was a key→value string map); step subjects (ingredients) are constrained to the composition — a step can never introduce an ingredient the formula does not contain | ducphu |
 | 2026-08-27 | Procedure panel implemented: left (wider) selectable step list + right linear-flow SVG graph and selected-step details; steps added/edited/deleted one at a time via st.dialog; graph is a built-in st.html inline SVG (no graphviz dependency) | ducphu |
 | 2026-08-27 | Procedure panel: three columns — left step list, middle top-to-bottom flow chart, right step details. Flow chart via the `graphviz` Python package + Streamlit's built-in `st.graphviz_chart` (dagre-d3 renders client-side, no system binary); `graphviz>=0.19` added to `pyproject.toml` (owner-approved) — supersedes the hand-rolled SVG | ducphu |
+| 2026-09-03 | Batches reverse link live: Batches service gained `list_batches_by_formula` (light summaries) + `count_batches_by_formula_id` (one GROUP BY); Formulas overview "batches" column and detail Overview "related batches" are real counts with links into batch detail; Q12 delete guard now blocks deleting a formula that batches reference — enforced in the delete dialog (`delete_block_reason` pure helper), since the condition lives in another service; samples/test reports stay placeholders until those modules land | ducphu |

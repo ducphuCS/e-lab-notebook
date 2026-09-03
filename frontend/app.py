@@ -91,6 +91,17 @@ def main() -> None:
                 url_path="batches",
             ),
             st.Page(
+                "batches/detail.py",
+                title="Batch Detail",
+                icon=":material/layers:",
+                # st.navigation in streamlit 1.60 does not support nested
+                # url_paths ("foo/bar"); the detail page gets its own
+                # single-segment path and the batch id travels in
+                # st.query_params (?batch_id=3) (README Q7).
+                url_path="batch-detail",
+                visibility="hidden",
+            ),
+            st.Page(
                 "samples/app.py",
                 title="Samples",
                 icon=":material/science:",

@@ -13,19 +13,57 @@ rendering, and dialog opening.
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from backend.gateway import batches as bgw
 from backend.gateway import formulas as gw
 
 
 @pytest.fixture()
 def db_path(tmp_path, monkeypatch):
-    """Temp dev-DB paths for the page under test."""
+    """Temp dev-DB paths for the page under test — the Formulas page now
+    also reads the Batches service for reverse-link counts (README §6), so
+    its dev DB path is patched too (keeps tests hermetic, no repo .db)."""
     formulas_path = tmp_path / "formulas.db"
     monkeypatch.setattr("backend.services.formulas.store.DEV_DB_PATH", formulas_path)
     monkeypatch.setattr(
         "backend.services.ingredients.store.DEV_DB_PATH",
         tmp_path / "ingredients.db",
     )
+    monkeypatch.setattr(
+        "backend.services.batches.store.DEV_DB_PATH",
+        tmp_path / "batches.db",
+    )
     return formulas_path
+
+
+def _batches_path(formulas_path):
+    return formulas_path.parent / "batches.db"
+
+
+def _batch_payload(formula_id: int, formula_name: str = "Emulsion X") -> dict:
+    """A minimal valid batch referencing a formula (same shape the Batches
+    page creates: formula snapshot + planned composition)."""
+    return {
+        "name": f"Run of {formula_name}",
+        "formula_id": formula_id,
+        "formula_name": formula_name,
+        "formula_version": 1,
+        "status": "planned",
+        "planned": {
+            "target_yield": None,
+            "composition": [
+                {
+                    "no": 1,
+                    "ingredient_id": 1,
+                    "ingredient_name": "Water",
+                    "amount": 90.0,
+                    "uom": "g",
+                    "notes": None,
+                }
+            ],
+            "processing": [],
+        },
+        "actual": {},
+    }
 
 
 def _page() -> AppTest:
@@ -211,3 +249,58 @@ def test_detail_page_without_formula_id(db_path) -> None:
     at.run()
     assert not at.exception
     assert any("No formula selected" in i.value for i in at.info)
+
+
+def test_overview_shows_real_batch_counts(db_path) -> None:
+    """The overview 'batches' column comes from the Batches service now
+    (README §6 / decision log 2026-09-03), not the hardcoded 0."""
+    conn = gw.connect(db_path)
+    try:
+        formula_a = gw.create_formula(conn, {"name": "Emulsion X", "status": "draft"})
+        formula_b = gw.create_formula(conn, {"name": "Oil Base", "status": "active"})
+    finally:
+        conn.close()
+
+    bconn = bgw.connect(_batches_path(db_path))
+    try:
+        bgw.create_batch(bconn, _batch_payload(formula_a["id"]))
+        bgw.create_batch(bconn, _batch_payload(formula_a["id"]))
+    finally:
+        bconn.close()
+
+    at = _page()
+    at.run()
+    assert not at.exception
+    df = at.dataframe[0].value
+    counts = dict(zip(df["name"], df["batches"]))
+    assert counts["Emulsion X"] == 2
+    assert counts["Oil Base"] == 0
+
+
+def test_detail_shows_related_batches(db_path) -> None:
+    """Formula detail lists the batches made from it with an open link
+    (README §4 Overview tab)."""
+    conn = gw.connect(db_path)
+    try:
+        record = gw.create_formula(conn, {"name": "Emulsion X", "status": "draft"})
+    finally:
+        conn.close()
+
+    bconn = bgw.connect(_batches_path(db_path))
+    try:
+        bgw.create_batch(bconn, _batch_payload(record["id"]))
+    finally:
+        bconn.close()
+
+    at = AppTest.from_file("frontend/formulas/detail.py")
+    at.session_state["formulas_detail_id"] = record["id"]
+    at.run()
+    assert not at.exception
+    # real batches metric (s3 and the related-records r1 both show 1)
+    assert any(m.label == "Batches" and m.value == "1" for m in at.metric)
+    # the related-batches table + open control render
+    related_tables = [d for d in at.dataframe if "B-0001" in str(d.value)]
+    assert related_tables
+    assert any("Open a batch" in s.label for s in at.selectbox)
+    assert any(b.label == "Open batch detail" for b in at.button)
+

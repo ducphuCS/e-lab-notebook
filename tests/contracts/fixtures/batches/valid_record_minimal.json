@@ -1,0 +1,14 @@
+{
+  "id": 2,
+  "batch_code": "B-0002",
+  "name": "B",
+  "formula_id": 1,
+  "formula_name": "F",
+  "formula_version": 1,
+  "planned": {"target_yield": null, "composition": [], "processing": []},
+  "actual": {},
+  "status": "planned",
+  "owner": null,
+  "created_at": "2026-09-03T10:00:00+00:00",
+  "updated_at": "2026-09-03T10:00:00+00:00"
+}
