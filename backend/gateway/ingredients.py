@@ -127,3 +127,30 @@ def delete_ingredient(conn: Any, ingredient_id: int) -> bool:
     if not store.delete_ingredient(conn, ingredient_id):
         raise GatewayError(f"Ingredient {ingredient_id} not found.")
     return True
+
+
+# ---------------------------------------------------------------------------
+# TEMP — legacy custom-field migration (remove me).
+# Entry points for the temporary in-app migration button
+# (frontend/ingredients/README.md §11).
+# ---------------------------------------------------------------------------
+
+
+def count_legacy_custom_field_rows(conn: Any) -> int:
+    """How many rows still store custom_fields in the legacy shape.
+
+    TEMP — the page uses this to decide whether to show the migration
+    button. Remove with the migration (see migration.py docstring).
+    """
+    return store.count_legacy_custom_field_rows(conn)
+
+
+def migrate_legacy_custom_fields(conn: Any) -> int:
+    """Rewrite legacy custom_fields rows in place; returns rows updated.
+
+    Deliberately bypasses response validation: legacy rows fail the
+    current-shape check by definition — rewriting them is the point.
+
+    TEMP — remove with the migration (see migration.py docstring).
+    """
+    return store.migrate_legacy_custom_fields(conn)

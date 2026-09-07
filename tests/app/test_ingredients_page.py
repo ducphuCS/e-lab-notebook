@@ -109,6 +109,48 @@ def test_selecting_row_updates_details_in_same_run(db_path) -> None:
     assert at.session_state["ingredients_selected_id"] is not None
 
 
+def test_legacy_custom_fields_banner_migrates_db(db_path) -> None:
+    """TEMP migration UI: legacy-format rows hide the list and show a
+    banner; the update button rewrites the DB row in place and the
+    ingredient loads afterwards. Delete with the migration
+    (frontend/ingredients/README.md §11).
+    """
+    from backend.services.ingredients import store
+
+    # Seed exactly what a pre-2026-09-07 DB contains: custom_fields stored
+    # as {name: plain value}. The gateway refuses to write this shape, so
+    # go through the (validation-free) store.
+    conn = store.connect(db_path)
+    try:
+        store.create_ingredient(
+            conn, {"name": "Water", "custom_fields": {"pH": "7"}}
+        )
+    finally:
+        conn.close()
+
+    at = _page()
+    at.run()
+    assert not at.exception
+    # the list is hidden and the migration banner is offered instead
+    assert len(at.dataframe) == 0
+    assert any("legacy" in w.value.lower() for w in at.warning)
+
+    _buttons(at, "Update legacy custom fields")[0].click()
+    at.run()
+
+    assert not at.exception
+    assert not any("legacy" in w.value.lower() for w in at.warning)
+    assert len(at.dataframe) == 1
+
+    conn = gw.connect(db_path)
+    try:
+        assert gw.list_ingredients(conn)[0]["custom_fields"] == {
+            "pH": {"value": "7", "unit": ""}
+        }
+    finally:
+        conn.close()
+
+
 def test_details_edit_and_delete_flow(db_path) -> None:
     # seed one ingredient in the temp DB
     conn = gw.connect(db_path)

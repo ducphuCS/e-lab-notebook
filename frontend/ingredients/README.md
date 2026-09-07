@@ -174,7 +174,9 @@ existing pages.*
     this shape on both writes and reads (request + gateway response
     validation) — legacy plain-string values are rejected at the seam. Stored
     rows in the dev DB were migrated once to the new shape; no dual-shape
-    support remains in the code.
+    support remains in the code. Real-user DBs still holding the old shape
+    are rewritten in place via a **temporary** in-app button (§11) — remove
+    it once every user has migrated.
 
 ### Q5. Should ingredients carry a default `uom`?
 
@@ -212,3 +214,43 @@ source of truth as it evolves.*
 | 2026-08-26 | Planned: ingredient master gains a unit-cost field (cost per uom) when the Formulas module lands (Formulas letter Q8); not implemented yet | ducphu |
 | 2026-09-07 | Layout: details panel moved to the narrow **left** column; the list stays wide on the right | ducphu |
 | 2026-09-07 | Custom fields: entries gain `unit`; stored shape `{name: {value, unit}}`; validation accepts only this shape; legacy plain-string rows migrated in the dev DB | ducphu |
+| 2026-09-07 | **TEMP:** in-app migration button added so real-user DBs still in the old custom-field shape can be rewritten in place — **remove after all users migrate** (§11) | ducphu |
+
+## 11. Temporary migration — legacy custom fields (remove me)
+
+> **REMOVE AFTER:** every real user database has been migrated. Tracked in
+> the decision log 2026-09-07 row above.
+
+**Background.** v0 stored custom fields as `{name: plain value}`. Commit
+`9e1c865` (2026-09-07) changed the shape to `{name: {value, unit}}`, and
+validation now rejects the old shape on **read** — so a DB that still
+contains legacy rows fails to load entirely. The dev DB was migrated by
+hand; real user DBs need this one-time in-place update.
+
+**How it works.** The Ingredients page counts legacy rows on every load
+(`gw.count_legacy_custom_field_rows`). While any exist, the strict list
+read is skipped and a **temporary** banner offers the update button; the
+button calls `gw.migrate_legacy_custom_fields`, which rewrites each
+`{name: value}` row to `{name: {value, unit: ""}}` in place. Migration is
+one-way and idempotent; rows already in the current shape are untouched.
+
+**To remove (once all users have migrated):**
+
+1. `frontend/ingredients/app.py` — drop the `legacy_rows` handling in the
+   data section, the banner call + empty-list branch in the layout, and the
+   `_render_legacy_migration_banner` helper.
+2. `backend/gateway/ingredients.py` — drop `count_legacy_custom_field_rows`
+   and `migrate_legacy_custom_fields`.
+3. `backend/services/ingredients/store.py` — drop
+   `_legacy_custom_field_rows`, `count_legacy_custom_field_rows`,
+   `migrate_legacy_custom_fields` and the `migration` import.
+4. Delete `backend/services/ingredients/migration.py`.
+5. Delete the migration tests: the whole files
+   `tests/unit/backend/test_ingredients_migration.py` and
+   `tests/unit/gateway/test_ingredients_gateway.py`, plus the migration
+   cases added to `tests/unit/backend/test_ingredients_store.py`
+   (`test_count_legacy_custom_field_rows`,
+   `test_migrate_legacy_custom_fields_is_idempotent`) and to
+   `tests/app/test_ingredients_page.py`
+   (`test_legacy_custom_fields_banner_migrates_db`).
+6. Remove this section and its decision-log row.
