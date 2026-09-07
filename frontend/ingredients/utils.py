@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-CUSTOM_FIELD_COLUMNS = ("key", "value")
+CUSTOM_FIELD_COLUMNS = ("key", "value", "unit")
 
 
 def _cell_text(value: object) -> str:
@@ -17,22 +17,33 @@ def _cell_text(value: object) -> str:
     return str(value)
 
 
-def custom_fields_to_df(custom_fields: dict[str, str] | None) -> pd.DataFrame:
-    """dict of name -> value to the key/value editor DataFrame."""
-    items = [(key, value) for key, value in (custom_fields or {}).items()]
+def custom_fields_to_df(
+    custom_fields: dict[str, dict[str, str]] | None,
+) -> pd.DataFrame:
+    """Stored mapping (name -> {value, unit}) to the editor DataFrame.
+
+    Only the current shape is expected; legacy plain-string entries are
+    rejected at the gateway before they reach the page.
+    """
+    items = [
+        (key, entry["value"], entry.get("unit", ""))
+        for key, entry in (custom_fields or {}).items()
+    ]
     return pd.DataFrame(items, columns=CUSTOM_FIELD_COLUMNS)
 
 
-def custom_fields_from_df(df: pd.DataFrame | None) -> dict[str, str]:
-    """Editor DataFrame to dict; rows with blank keys are dropped."""
-    result: dict[str, str] = {}
+def custom_fields_from_df(df: pd.DataFrame | None) -> dict[str, dict[str, str]]:
+    """Editor DataFrame to the stored mapping; blank keys are dropped."""
+    result: dict[str, dict[str, str]] = {}
     if df is None or df.empty:
         return result
     for _, row in df.iterrows():
         key = _cell_text(row.get("key")).strip()
-        value = _cell_text(row.get("value"))
         if key:
-            result[key] = value
+            result[key] = {
+                "value": _cell_text(row.get("value")),
+                "unit": _cell_text(row.get("unit")),
+            }
     return result
 
 
@@ -44,7 +55,7 @@ def build_ingredient_payload(
     notes: str = "",
     uom: str = "",
     state: str | None = None,
-    custom_fields: dict[str, str] | None = None,
+    custom_fields: dict[str, dict[str, str]] | None = None,
 ) -> dict:
     """Build a service payload from form values (blank strings -> None)."""
     return {

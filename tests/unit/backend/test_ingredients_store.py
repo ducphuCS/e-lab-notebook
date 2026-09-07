@@ -35,9 +35,15 @@ def test_list_orders_by_name(conn) -> None:
 
 def test_custom_fields_json_roundtrip(conn) -> None:
     new_id = store.create_ingredient(
-        conn, {"name": "Water", "custom_fields": {"pH": "7"}}
+        conn,
+        {
+            "name": "Water",
+            "custom_fields": {"pH": {"value": "7", "unit": "mg/L"}},
+        },
     )
-    assert store.get_ingredient(conn, new_id)["custom_fields"] == {"pH": "7"}
+    assert store.get_ingredient(conn, new_id)["custom_fields"] == {
+        "pH": {"value": "7", "unit": "mg/L"}
+    }
 
 
 def test_get_missing_returns_none(conn) -> None:

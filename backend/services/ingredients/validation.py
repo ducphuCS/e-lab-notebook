@@ -33,14 +33,40 @@ def validate_ingredient(data: dict[str, Any]) -> list[str]:
     custom_fields = data.get("custom_fields")
     if custom_fields is not None:
         if not isinstance(custom_fields, dict):
-            problems.append("custom_fields must be a mapping of name -> value.")
+            problems.append(
+                "custom_fields must be a mapping of name -> {value, unit}."
+            )
         else:
-            for key, value in custom_fields.items():
-                if not isinstance(key, str) or not key.strip():
-                    problems.append("custom_fields keys must be non-empty strings.")
-                    break
-                if not isinstance(value, str):
-                    problems.append(f"custom_fields value for '{key}' must be a string.")
-                    break
+            problems.extend(validate_custom_fields(custom_fields))
 
+    return problems
+
+
+def validate_custom_fields(custom_fields: dict[str, Any]) -> list[str]:
+    """Validate one custom-fields mapping ({name: {value, unit}}).
+
+    Shared by request validation (validate_ingredient) and by the
+    gateway's response validation, so only this shape exists anywhere:
+    the legacy plain-string shape ({"name": "value"}) is rejected on
+    both read and write (owner request 2026-09-07; dev DB migrated).
+    """
+    problems: list[str] = []
+    for key, entry in custom_fields.items():
+        if not isinstance(key, str) or not key.strip():
+            problems.append("custom_fields keys must be non-empty strings.")
+            break
+        if not isinstance(entry, dict):
+            problems.append(
+                f"custom_fields entry for '{key}' must be an object with "
+                "'value' and 'unit' strings."
+            )
+            continue
+        value = entry.get("value")
+        if not isinstance(value, str):
+            problems.append(
+                f"custom_fields value for '{key}' must be a string."
+            )
+        unit = entry.get("unit")
+        if unit is not None and not isinstance(unit, str):
+            problems.append(f"custom_fields unit for '{key}' must be a string.")
     return problems

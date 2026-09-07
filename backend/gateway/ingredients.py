@@ -19,7 +19,10 @@ from typing import Any
 
 from backend.services.ingredients import store
 from backend.services.ingredients.schema import INGREDIENT_FIELDS
-from backend.services.ingredients.validation import validate_ingredient
+from backend.services.ingredients.validation import (
+    validate_custom_fields,
+    validate_ingredient,
+)
 
 
 class GatewayError(Exception):
@@ -58,8 +61,14 @@ def validate_record(data: dict[str, Any]) -> list[str]:
     if not isinstance(data.get("id"), int):
         problems.append("response record 'id' must be an integer.")
     custom_fields = data.get("custom_fields")
-    if custom_fields is not None and not isinstance(custom_fields, dict):
-        problems.append("response record 'custom_fields' must be an object.")
+    if custom_fields is not None:
+        if not isinstance(custom_fields, dict):
+            problems.append("response record 'custom_fields' must be an object.")
+        else:
+            # Same shape as request payloads: {name: {value, unit}}. A
+            # legacy plain-string mapping fails here, so the read path
+            # never surfaces legacy data to the page.
+            problems.extend(validate_custom_fields(custom_fields))
     return problems
 
 

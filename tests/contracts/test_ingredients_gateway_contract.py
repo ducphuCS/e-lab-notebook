@@ -28,7 +28,12 @@ def test_valid_service_records_are_accepted(name: str) -> None:
 
 @pytest.mark.parametrize(
     "name",
-    ["malformed_missing_fields", "malformed_bad_id", "malformed_bad_custom_fields"],
+    [
+        "malformed_missing_fields",
+        "malformed_bad_id",
+        "malformed_bad_custom_fields",
+        "malformed_legacy_custom_fields",
+    ],
 )
 def test_malformed_service_records_are_rejected(name: str) -> None:
     assert gw.validate_record(_fixture(name)) != []

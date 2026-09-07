@@ -81,6 +81,34 @@ def test_create_rejects_missing_name(db_path) -> None:
         conn.close()
 
 
+def test_selecting_row_updates_details_in_same_run(db_path) -> None:
+    """A table click refreshes the Details panel on the very rerun.
+
+    Regression for the 2026-09-07 bug report: after the Details panel
+    moved to the left column it is drawn before the table, so the panel
+    only caught up on a *later* interaction. The selection is now read
+    from the table's session state before the panel is drawn.
+    """
+    conn = gw.connect(db_path)
+    try:
+        gw.create_ingredient(conn, {"name": "Water", "state": "liquid"})
+    finally:
+        conn.close()
+
+    at = _page()
+    at.run()
+    assert not any(m.value.startswith("### Water") for m in at.markdown)
+
+    # A user click delivers the table's selection through session state
+    # before the rerun starts.
+    at.session_state["ingredients_table"] = {"selection": {"rows": [0]}}
+    at.run()
+
+    assert not at.exception
+    assert any(m.value.startswith("### Water") for m in at.markdown)
+    assert at.session_state["ingredients_selected_id"] is not None
+
+
 def test_details_edit_and_delete_flow(db_path) -> None:
     # seed one ingredient in the temp DB
     conn = gw.connect(db_path)

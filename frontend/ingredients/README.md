@@ -25,7 +25,8 @@ already use `item_code` / `item_description`.
 **In scope**
 
 - CRUD on ingredients.
-- Two-column layout: list on the left, details of the selected ingredient on the right.
+- Two-column layout: details of the selected ingredient on the **left**
+  (narrow panel), list on the **right** (wide).
 - Placeholder state in the details panel when nothing is selected.
 - Per-ingredient custom fields (free key/value pairs, user-defined names).
 
@@ -50,19 +51,20 @@ already use `item_code` / `item_description`.
 
 *Describe the page layout: columns, panels, and empty/placeholder states.*
 
-Two columns:
+Two columns (layout updated 2026-09-07 — the details panel now sits on the
+left, the list stays wide on the right):
 
-- **Left column** — the full list of ingredients (read-only table; grows to
-  show all rows). Selecting a row populates the right column.
-- **Right column** — details and related information of the selected
+- **Left column (narrow)** — details and related information of the selected
   ingredient:
   - attributes grouped in rows to avoid scrolling: item code + item
     description (2 cols), supplier + UOM + state (3 cols), notes on its own
     row,
   - number of formulas using this ingredient (metric),
-  - custom fields (editable key/value pairs),
+  - custom fields (editable key/value/unit rows),
   - add/edit form and delete button.
   When nothing is selected, show a placeholder ("Select an ingredient…").
+- **Right column (wide)** — the full list of ingredients (read-only table;
+  grows to show all rows). Selecting a row populates the left column.
 
 ## 5. Data
 
@@ -78,7 +80,7 @@ Two columns:
 | notes | text | no | User free-text notes. Named `notes` (not `description`) to avoid confusion with `item_description`. |
 | uom | text | no | Default unit. Can prefill DOE formulation UOM later. |
 | state | text | no | Physical state: liquid / solid / powder / … (selectbox). |
-| custom_fields | json | no | Per-ingredient key/value map (user-defined names). See Q4. |
+| custom_fields | json | no | Per-ingredient mapping of user-defined name → {value, unit}. See Q4. |
 
 ### 5.2 Persistence (resolved — see Q2)
 
@@ -167,6 +169,12 @@ existing pages.*
   (user-defined names), stored as a JSON column in v0 (no filtering by custom
   fields yet). EAV table is the evolution path if global field definitions or
   per-field queries are ever needed.
+  - **Extended 2026-09-07:** each entry gains an optional `unit`; the stored
+    shape is now `{name: {value, unit}}`. Backend validation accepts **only**
+    this shape on both writes and reads (request + gateway response
+    validation) — legacy plain-string values are rejected at the seam. Stored
+    rows in the dev DB were migrated once to the new shape; no dual-shape
+    support remains in the code.
 
 ### Q5. Should ingredients carry a default `uom`?
 
@@ -202,3 +210,5 @@ source of truth as it evolves.*
 | 2026-08-24 | Q5: add optional `uom` and `state` fields | ducphu |
 | 2026-08-24 | Q6: minimal seam now — SQLite service + thin gateway; page calls gateway in-process | ducphu |
 | 2026-08-26 | Planned: ingredient master gains a unit-cost field (cost per uom) when the Formulas module lands (Formulas letter Q8); not implemented yet | ducphu |
+| 2026-09-07 | Layout: details panel moved to the narrow **left** column; the list stays wide on the right | ducphu |
+| 2026-09-07 | Custom fields: entries gain `unit`; stored shape `{name: {value, unit}}`; validation accepts only this shape; legacy plain-string rows migrated in the dev DB | ducphu |

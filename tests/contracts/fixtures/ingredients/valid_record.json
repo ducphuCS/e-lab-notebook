@@ -7,5 +7,5 @@
   "notes": "Store at room temperature",
   "uom": "L",
   "state": "liquid",
-  "custom_fields": { "pH": "7" }
+  "custom_fields": { "pH": { "value": "7", "unit": "mg/L" } }
 }

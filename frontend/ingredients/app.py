@@ -1,9 +1,10 @@
 """Ingredients page (Library section).
 
 Two-column layout (frontend/ingredients/README.md §4):
-- left: read-only list of all ingredients with single-row selection
-- right: details of the selected ingredient, or an explicit create/edit
-  form and delete flow (README §7, Q3 resolution)
+- left (narrow): details of the selected ingredient, or an explicit
+  create/edit form and delete flow (README §7, Q3 resolution)
+- right (wide): read-only list of all ingredients with single-row
+  selection
 
 The page stays thin glue (docs/TEST_STRATEGIES.md §5): widgets -> gateway
 call -> display. Pure helpers live in utils.py; service + gateway live in
@@ -77,10 +78,10 @@ def _reset_to_details() -> None:
     st.session_state.ingredients_confirm_delete_id = None
 
 
-# ------------------------------------------------------------ right panel
+# ---------------------------------------------------- details panel
 def _render_details(conn, selected_id: int | None) -> None:
     if selected_id is None:
-        st.info("Select an ingredient on the left to see its details.")
+        st.info("Select an ingredient in the list to see its details.")
         return
 
     record = gw.get_ingredient(conn, selected_id)
@@ -192,7 +193,7 @@ def _render_edit_form(conn, record: dict | None) -> None:
         )
 
         st.write("**Custom fields**")
-        st.caption("Free key/value properties (user-defined names).")
+        st.caption("User-defined properties: name, value, and an optional unit.")
         custom_editor = st.data_editor(
             custom_fields_to_df(record.get("custom_fields")),
             num_rows="dynamic",
@@ -200,7 +201,8 @@ def _render_edit_form(conn, record: dict | None) -> None:
             width="stretch",
             column_config={
                 "key": st.column_config.TextColumn("Key", required=False),
-                "value": st.column_config.TextColumn("Value"),
+                "value": st.column_config.TextColumn("Value", required=False),
+                "unit": st.column_config.TextColumn("Unit", required=False),
             },
             key=f"custom_fields_{record_id}",
         )
@@ -238,9 +240,16 @@ def _render_edit_form(conn, record: dict | None) -> None:
 
 
 # ---------------------------------------------------------------- layout
-left, right = st.columns([3, 1], gap="small")
+# Details panel narrow on the left, list wide on the right
+# (owner request 2026-09-07; frontend/ingredients/README.md §4).
+#
+# The list column is *filled first* even though it sits on the right:
+# Streamlit columns keep their screen position regardless of fill order,
+# so the table's selection updates ingredients_selected_id before the
+# Details panel below is rendered (fix for the 2026-09-07 bug report).
+details_col, list_col = st.columns([1, 3], gap="small")
 
-with left:
+with list_col:
     if df.empty:
         st.info("No ingredients yet — add your first one.")
     else:
@@ -263,7 +272,7 @@ with left:
         if rows:
             st.session_state.ingredients_selected_id = int(df.iloc[rows[0]]["id"])
 
-with right:
+with details_col:
     st.subheader("Details")
 
     mode = st.session_state.ingredients_mode

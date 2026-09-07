@@ -46,16 +46,47 @@ def test_custom_fields_must_be_a_dict() -> None:
 
 
 def test_custom_fields_blank_key_is_reported() -> None:
-    problems = validate_ingredient({"name": "X", "custom_fields": {"": "v"}})
+    problems = validate_ingredient(
+        {"name": "X", "custom_fields": {"": {"value": "v"}}}
+    )
     assert any("custom_fields" in p for p in problems)
+
+
+def test_custom_fields_legacy_string_entry_is_rejected() -> None:
+    # v0 stored plain strings ({"pH": "7"}); only the new
+    # {key: {value, unit}} shape is accepted now (owner request 2026-09-07).
+    problems = validate_ingredient({"name": "X", "custom_fields": {"pH": "7"}})
+    assert any("custom_fields" in p for p in problems)
+
+
+def test_custom_fields_missing_value_is_reported() -> None:
+    problems = validate_ingredient(
+        {"name": "X", "custom_fields": {"pH": {"unit": "mg/L"}}}
+    )
+    assert any("value" in p for p in problems)
 
 
 def test_custom_fields_non_string_value_is_reported() -> None:
-    problems = validate_ingredient({"name": "X", "custom_fields": {"ph": 7}})
-    assert any("custom_fields" in p for p in problems)
+    problems = validate_ingredient(
+        {"name": "X", "custom_fields": {"pH": {"value": 7}}}
+    )
+    assert any("value" in p for p in problems)
+
+
+def test_custom_fields_non_string_unit_is_reported() -> None:
+    problems = validate_ingredient(
+        {"name": "X", "custom_fields": {"pH": {"value": "7", "unit": 5}}}
+    )
+    assert any("unit" in p for p in problems)
 
 
 def test_custom_fields_valid_passes() -> None:
     assert validate_ingredient(
-        {"name": "X", "custom_fields": {"ph": "7", "grade": "technical"}}
+        {
+            "name": "X",
+            "custom_fields": {
+                "pH": {"value": "7", "unit": "mg/L"},
+                "grade": {"value": "technical"},
+            },
+        }
     ) == []
