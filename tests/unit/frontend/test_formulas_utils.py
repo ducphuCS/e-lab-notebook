@@ -175,8 +175,29 @@ def test_build_payload_blank_to_none() -> None:
     assert payload["description"] is None
     assert payload["tags"] == ["a", "b"]
     assert payload["composition"] == [{"no": 1}]
+    # params/procedure are omitted (not empty) when not edited — the
+    # gateway merge keeps the stored values on update (2026-08-27 log).
+    assert "params" not in payload
+    assert "procedure" not in payload
+
+
+def test_build_payload_explicit_params_procedure_are_kept() -> None:
+    """Explicitly passed params/procedure travel in the payload — an
+    empty list is a deliberate clear, not an accidental wipe."""
+    procedure = [
+        {
+            "name": "Mix",
+            "ingredients": [],
+            "equipment": "Blender",
+            "duration": "5 min",
+            "params": [{"name": "speed", "value": "1000", "unit": "rpm"}],
+        }
+    ]
+    payload = build_formula_payload(
+        name="X", status="draft", params=[], procedure=procedure
+    )
     assert payload["params"] == []
-    assert payload["procedure"] == []
+    assert payload["procedure"] == procedure
 
 
 def test_derive_percentages() -> None:

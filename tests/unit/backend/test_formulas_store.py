@@ -115,6 +115,29 @@ def test_update_bumps_version_when_composition_changes(conn) -> None:
     assert versions[1]["snapshot"]["name"] == "Emulsion X"
 
 
+def test_update_composition_preserves_procedure_and_params(conn) -> None:
+    """Regression (owner report): editing a formula's composition must not
+    wipe its procedure/params. A partial payload without those keys keeps
+    them; the version bumps and the snapshot still carries them."""
+    payload = _payload()
+    payload["params"] = [
+        {
+            "parameter": "theoretical brix",
+            "source": "Water",
+            "aggregation": "sum",
+            "value": "10",
+        }
+    ]
+    new_id = store.create_formula(conn, payload)
+    store.update_formula(conn, new_id, {"composition": _changed_composition(95.0)})
+    record = store.get_formula(conn, new_id)
+    assert record["version"] == 2
+    assert record["procedure"] == payload["procedure"]  # untouched
+    assert record["params"] == payload["params"]  # untouched
+    versions = store.list_formula_versions(conn, new_id)
+    assert versions[1]["snapshot"]["procedure"] == payload["procedure"]
+
+
 def test_update_merges_partial_payload(conn) -> None:
     new_id = store.create_formula(conn, _payload())
     store.update_formula(conn, new_id, {"owner": "ducphu"})

@@ -253,8 +253,16 @@ def build_formula_payload(
     params: list[dict] | None = None,
     procedure: list[dict] | None = None,
 ) -> dict:
-    """Build a service payload from form values (blank strings -> None)."""
-    return {
+    """Build a service payload from form values (blank strings -> None).
+
+    ``params`` and ``procedure`` are included only when explicitly passed
+    (not None) — the gateway merges a partial update payload over the
+    current record (README decision log 2026-08-27), so *omitting* them
+    on edit preserves the stored values instead of wiping them. Pass ``[]``
+    to intentionally clear one; on create the store defaults missing keys
+    to [] anyway.
+    """
+    payload: dict = {
         "name": name.strip(),
         "status": status,
         "project": project.strip() or None,
@@ -264,9 +272,12 @@ def build_formula_payload(
         "description": description.strip() or None,
         "custom_fields": custom_fields or {},
         "composition": composition or [],
-        "params": params or [],
-        "procedure": procedure or [],
     }
+    if params is not None:
+        payload["params"] = params
+    if procedure is not None:
+        payload["procedure"] = procedure
+    return payload
 
 
 # --- derived values --------------------------------------------------------
