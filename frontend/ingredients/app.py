@@ -56,20 +56,11 @@ if "ingredients_conn" not in st.session_state:
     st.session_state.ingredients_conn = gw.connect(DEV_DB_PATH)
 conn = st.session_state.ingredients_conn
 
-# TEMP legacy migration (remove me — see README §11): databases written
-# before the custom-field unit column (commit 9e1c865) store custom_fields
-# as {name: value}; the strict read rejects that shape for the whole list.
-# While any such row exists, skip the list and let the banner below offer
-# the one-time update.
-legacy_rows = gw.count_legacy_custom_field_rows(conn)
-if legacy_rows:
+try:
+    records = gw.list_ingredients(conn)
+except gw.GatewayError as exc:
+    st.error(f"Could not load ingredients: {exc}")
     records = []
-else:
-    try:
-        records = gw.list_ingredients(conn)
-    except gw.GatewayError as exc:
-        st.error(f"Could not load ingredients: {exc}")
-        records = []
 
 df = pd.DataFrame(records)
 
@@ -163,36 +154,6 @@ def _render_delete_confirm(conn, record_id: int) -> None:
         st.rerun()
 
 
-def _render_legacy_migration_banner(conn, legacy_rows: int) -> None:
-    """TEMP (remove me — see frontend/ingredients/README.md §11 and the
-    decision log 2026-09-07): one-time in-place update for rows written
-    before the custom-field unit column (commit 9e1c865). The banner and
-    this function disappear once every real database is migrated.
-    """
-    plural = "s" if legacy_rows != 1 else ""
-    st.warning(
-        f"**{legacy_rows} ingredient{plural} still store custom fields in the "
-        "legacy format** (name → value, no unit) and are kept hidden until "
-        "updated to the current format (name → value + unit)."
-    )
-    st.caption(
-        "Temporary helper for the 2026-09-07 custom-field format change — "
-        "this button will be removed once all databases are updated."
-    )
-    if st.button(
-        "Update legacy custom fields",
-        type="primary",
-        key="migrate_legacy_custom_fields",
-    ):
-        try:
-            migrated = gw.migrate_legacy_custom_fields(conn)
-        except gw.GatewayError as exc:
-            st.error(f"Could not update legacy custom fields: {exc}")
-        else:
-            st.toast(f"Updated {migrated} ingredient(s) to the current format.")
-            st.rerun()
-
-
 def _render_edit_form(conn, record: dict | None) -> None:
     """Create form (record=None) or edit form (record=dict)."""
     is_edit = record is not None
@@ -279,12 +240,6 @@ def _render_edit_form(conn, record: dict | None) -> None:
 
 
 # ---------------------------------------------------------------- layout
-# TEMP legacy migration (remove me — see README §11): while legacy-format
-# rows exist the list read above is skipped, so surface the update banner
-# at the top of the content area.
-if legacy_rows:
-    _render_legacy_migration_banner(conn, legacy_rows)
-
 # Details panel narrow on the left, list wide on the right
 # (owner request 2026-09-07; frontend/ingredients/README.md §4).
 #
@@ -296,13 +251,7 @@ details_col, list_col = st.columns([1, 3], gap="small")
 
 with list_col:
     if df.empty:
-        if legacy_rows:
-            st.info(
-                "Ingredients stored in the old custom-field format stay "
-                "hidden until you update them with the button above."
-            )
-        else:
-            st.info("No ingredients yet — add your first one.")
+        st.info("No ingredients yet — add your first one.")
     else:
         # Lean table: internal id, item code, item description and custom
         # fields stay visible in the Details panel only

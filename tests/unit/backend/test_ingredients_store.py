@@ -78,31 +78,3 @@ def test_delete_removes_record(conn) -> None:
 
 def test_delete_missing_returns_false(conn) -> None:
     assert store.delete_ingredient(conn, 999) is False
-
-
-def test_count_legacy_custom_field_rows(conn) -> None:
-    # TEMP migration support (remove with it — see migration.py): legacy
-    # rows are plain-string mappings, current rows are {value, unit} dicts.
-    store.create_ingredient(conn, {"name": "Old", "custom_fields": {"pH": "7"}})
-    store.create_ingredient(
-        conn,
-        {"name": "New", "custom_fields": {"pH": {"value": "7", "unit": "mg/L"}}},
-    )
-    store.create_ingredient(conn, {"name": "Plain"})
-    assert store.count_legacy_custom_field_rows(conn) == 1
-
-
-def test_migrate_legacy_custom_fields_is_idempotent(conn) -> None:
-    # TEMP migration support (remove with it — see migration.py).
-    store.create_ingredient(conn, {"name": "Old", "custom_fields": {"pH": "7"}})
-    store.create_ingredient(
-        conn,
-        {"name": "New", "custom_fields": {"pH": {"value": "7", "unit": "mg/L"}}},
-    )
-
-    assert store.migrate_legacy_custom_fields(conn) == 1
-    assert store.migrate_legacy_custom_fields(conn) == 0  # idempotent
-
-    by_name = {r["name"]: r["custom_fields"] for r in store.list_ingredients(conn)}
-    assert by_name["Old"] == {"pH": {"value": "7", "unit": ""}}
-    assert by_name["New"] == {"pH": {"value": "7", "unit": "mg/L"}}

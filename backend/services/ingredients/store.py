@@ -14,7 +14,6 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from backend.services.ingredients.migration import has_legacy_entries, to_new_shape
 from backend.services.ingredients.schema import INGREDIENTS_DDL
 
 # Repo-local dev database (README §5.2). Gitignored via `*.db` (step 5 of
@@ -133,56 +132,3 @@ def delete_ingredient(conn: sqlite3.Connection, ingredient_id: int) -> bool:
     )
     conn.commit()
     return cursor.rowcount > 0
-
-
-# ---------------------------------------------------------------------------
-# TEMP — legacy custom-field migration (remove me).
-# See backend/services/ingredients/migration.py and
-# frontend/ingredients/README.md §11. The dev DB was migrated by hand;
-# these helpers exist for real user DBs created before the custom-field
-# unit column (commit 9e1c865, 2026-09-07).
-# ---------------------------------------------------------------------------
-
-
-def _legacy_custom_field_rows(
-    conn: sqlite3.Connection,
-) -> list[tuple[int, dict[str, Any]]]:
-    """(id, decoded custom_fields) for every row still in the legacy shape.
-
-    Rows whose custom_fields column is not valid JSON or not an object are
-    skipped: they are corrupt, not legacy, and out of this migration's scope.
-    """
-    found: list[tuple[int, dict[str, Any]]] = []
-    for row in conn.execute("SELECT id, custom_fields FROM ingredients"):
-        try:
-            fields = json.loads(row["custom_fields"] or "{}")
-        except (json.JSONDecodeError, TypeError):
-            continue
-        if isinstance(fields, dict) and has_legacy_entries(fields):
-            found.append((int(row["id"]), fields))
-    return found
-
-
-def count_legacy_custom_field_rows(conn: sqlite3.Connection) -> int:
-    """How many rows still store custom_fields in the legacy shape.
-
-    Lets the page decide whether to offer the migration button.
-    """
-    return len(_legacy_custom_field_rows(conn))
-
-
-def migrate_legacy_custom_fields(conn: sqlite3.Connection) -> int:
-    """Rewrite legacy-shaped rows in place; returns the number updated.
-
-    Idempotent — a second call migrates nothing. Values become
-    {"value": <text>, "unit": ""}, matching the current shape exactly.
-    """
-    migrated = 0
-    for row_id, fields in _legacy_custom_field_rows(conn):
-        conn.execute(
-            "UPDATE ingredients SET custom_fields = ? WHERE id = ?",
-            (json.dumps(to_new_shape(fields)), row_id),
-        )
-        migrated += 1
-    conn.commit()
-    return migrated
