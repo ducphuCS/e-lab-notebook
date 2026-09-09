@@ -96,11 +96,14 @@ DBs, never the dev DB.
 
 - **External item-code system:** source of `item_code` / `item_description`.
   No sync/import in v0 — fields are filled manually.
-- **Formulas** (Library): count of formulas using this ingredient (details
-  panel). Formulas is a stub — the count will be a placeholder until it lands.
-  When Formulas lands, the ingredient master also gains a unit-cost field
-  (cost per uom) so formulas can derive cost contributions (Formulas letter
-  Q8; decision log 2026-08-26).
+- **Formulas** (Library): Formulas v0 landed 2026-08-26 and its composition
+  rows reference ingredients by id (one vocabulary) — the reverse metric is
+  no longer gated on Formulas landing. Two coordinated items remain **open**
+  (decision log 2026-09-09): the "Formulas using this ingredient" metric on
+  the details panel is still a hardcoded placeholder "0" (the reverse count
+  was never wired — the mirror of the Batches→Formulas reverse link, done
+  2026-09-03), and the ingredient master still has **no unit-cost field**
+  (Formulas letter Q8), so formula cost contribution is unimplemented.
 - **DOE** (Analyze): reads `item_code` / `item_description` — keep field
   naming consistent.
 
@@ -216,3 +219,4 @@ source of truth as it evolves.*
 | 2026-09-07 | Layout: details panel moved to the narrow **left** column; the list stays wide on the right | ducphu |
 | 2026-09-07 | Custom fields: entries gain `unit`; stored shape `{name: {value, unit}}`; validation accepts only this shape; legacy plain-string rows migrated in the dev DB | ducphu |
 | 2026-09-07 | Temporary in-app legacy custom-field migration (added earlier this day, commit ebf9d35) **removed** — all real-user DBs migrated. Tooling preserved standalone in `archive/ingredients_custom_field_migration.py` | ducphu |
+| 2026-09-09 | Formulas v0 landed (2026-08-26) but two coordinated items from the Formulas letter stayed open: the "Formulas using this ingredient" reverse metric remains a placeholder "0" (never wired — mirror of the Batches→Formulas reverse link done 2026-09-03), and the ingredient unit-cost field (cost per uom, Formulas letter Q8) was **not** added — formula cost contribution unimplemented. §6 rewritten to reflect reality; the metric's help text in `ingredients/app.py` no longer claims the Formulas module "is not implemented" | ducphu |

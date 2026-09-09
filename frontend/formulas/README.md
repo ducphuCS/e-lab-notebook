@@ -1,7 +1,9 @@
 # Formulas — Intention Letter
 
-> **Section:** Library · **Status:** intention letter — all questions in §9
-> resolved 2026-08-26 (owner answers); implementation not started.
+> **Section:** Library · **Status:** resolved + implemented — all questions
+> in §9 answered by the owner (2026-08-26); decisions recorded in §10.
+> Formulas v0 implemented (service, gateway, overview + hidden detail pages,
+> tests) — see the decision log for follow-ups.
 
 ## 1. Intention
 
@@ -426,3 +428,4 @@ source of truth as it evolves.*
 | 2026-08-27 | Procedure panel implemented: left (wider) selectable step list + right linear-flow SVG graph and selected-step details; steps added/edited/deleted one at a time via st.dialog; graph is a built-in st.html inline SVG (no graphviz dependency) | ducphu |
 | 2026-08-27 | Procedure panel: three columns — left step list, middle top-to-bottom flow chart, right step details. Flow chart via the `graphviz` Python package + Streamlit's built-in `st.graphviz_chart` (dagre-d3 renders client-side, no system binary); `graphviz>=0.19` added to `pyproject.toml` (owner-approved) — supersedes the hand-rolled SVG | ducphu |
 | 2026-09-03 | Batches reverse link live: Batches service gained `list_batches_by_formula` (light summaries) + `count_batches_by_formula_id` (one GROUP BY); Formulas overview "batches" column and detail Overview "related batches" are real counts with links into batch detail; Q12 delete guard now blocks deleting a formula that batches reference — enforced in the delete dialog (`delete_block_reason` pure helper), since the condition lives in another service; samples/test reports stay placeholders until those modules land | ducphu |
+| 2026-09-09 | Formulas v0 marked implemented: this README's header said "implementation not started" although the module landed 2026-08-26 (service, gateway, overview + hidden detail pages, tests); header updated to reflect the real state (mirrors the Batches header fix 2026-09-09). Open items: the Q8 ingredient unit-cost field + formula cost contribution are still **not implemented** (no cost column in the Composition tab — `detail.py` defers to this letter), and the "Formulas using this ingredient" metric on Ingredients remains a hardcoded "0" (see the Ingredients letter decision log 2026-09-09) | ducphu |

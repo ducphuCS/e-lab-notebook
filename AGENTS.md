@@ -23,6 +23,14 @@
 7. **Docs are the source of truth** — `docs/` and `archive/` define product and
    domain requirements. If a request conflicts with them, ask before
    implementing.
+8. **Docs freshness at commit time** — Before presenting changes for commit,
+   check whether any source-of-truth doc went stale: audit the range
+   `git log <last commit touching docs/ archive/ AGENTS.md>..HEAD` plus
+   uncommitted changes; for each commit in range, judge whether it invalidates
+   statements in `AGENTS.md` (§5 layout table, §6 current state, §7 run
+   instructions) or in `docs/` / `archive/` (architecture, pages, modules,
+   commands). Flag stale statements and propose the concrete edit — do not
+   edit without explicit approval (rule 2).
 
 ## 2. What this project is
 
@@ -36,7 +44,9 @@ Analyze**.
 
 - **Language:** Python (>=3.13; see `pyproject.toml`, `.python-version`)
 - **Package manager:** `uv` (`uv.lock`, `.venv/` in repo root)
-- **Dependencies:** `streamlit >= 1.60.0` (UI), `pandas >= 3.0.5` (data)
+- **Dependencies:** `streamlit >= 1.60.0` (UI), `pandas >= 3.0.5` (data),
+  `graphviz >= 0.19` (formula-procedure flow charts)
+- **Dev dependencies:** `pytest >= 9.1.1` (see `docs/TEST_STRATEGIES.md`)
 - **No JavaScript/Node tooling** — no `package.json` or frontend build config.
 
 ## 4. Implementation principles
@@ -57,48 +67,74 @@ writing custom implementations — for both features and UI.
 > modularization. `frontend/` and `backend/` each have their own `app.py` as
 > entrypoint. The `main.py` in the root folder is used to run the app.
 
-Target layout and current status:
+Current layout:
 
-| Path | Purpose | Status |
+| Path | Purpose | Current content |
 |---|---|---|
-| `main.py` | Runs the app — launches the frontend (and backend) entrypoints. | exists, but only prints `Hello from eln-ver2!` — not yet functional |
-| `frontend/app.py` | Frontend entrypoint (page router). | planned — not yet created |
-| `frontend/<page>/` | One folder per page for modularization, each with its own files. Example: `frontend/formulator_plan_mode/app.py`. | pattern in use |
-| `backend/app.py` | Backend entrypoint. | planned — not yet created |
-| `backend/` | Backend modules. | empty |
-| `tests/` | Tests. | empty |
-| `docs/` | Product documentation (`PROGRAM.md`, `IDEAS.md`, `prompts/`). | committed |
-| `archive/` | Older docs (e.g. `PROJECT.md`). | committed |
+| `main.py` | Runs the app — launches the backend entrypoint, then the frontend router. | functional |
+| `frontend/app.py` | Frontend entrypoint — `st.navigation` router over the four sections **Overview, Library, Lab, Analyze**. | functional |
+| `frontend/<module>/` | One folder per module/page, each with its own files **and a README intention letter**. `formulas/` and `batches/` add a hidden `detail.py` child page (ids via `?formula_id=` / `?batch_id=`). | pattern in use |
+| `backend/app.py` | Backend entrypoint. | exists — placeholder (starts no services) |
+| `backend/gateway/` | Gateway clients — the only place allowed to do transport; in-process for v0. | `ingredients.py`, `formulas.py`, `batches.py` |
+| `backend/services/` | Services (SQLite store + validation per module). | `ingredients/`, `formulas/`, `batches/` |
+| `tests/` | pytest suites per `docs/TEST_STRATEGIES.md` (`unit/`, `contracts/`, `app/`). | populated |
+| `docs/` | Product + methodology docs. | `PROGRAM.md`, `IDEAS.md`, `TEST_STRATEGIES.md`, `prompts/` |
+| `archive/` | Older docs. | `PROJECT.md` |
 | `.env` | Empty env file. | — |
+
+**Implemented frontend modules:** Ingredients, Formulas, Batches, DOE (legacy —
+see §6). **Registered placeholder stubs:** dashboard, projects, equipment, test
+methods, test panels, documents, samples, test reports.
 
 ## 6. Current state
 
-Early prototype. The last commit is `Update project docs`. Section 5's
-architecture rule is the **target**; the codebase is still catching up:
+The app runs end to end: `uv run python main.py` launches the frontend router
+with four sections — Overview (dashboard, projects), Library (ingredients,
+equipment, test methods, test panels, formulas, documents), Lab (batches,
+samples, test reports), Analyze (DOE).
 
-- `main.py` does not run the app yet — it only prints `Hello from eln-ver2!`.
-- `frontend/app.py` and `backend/app.py` do not exist yet.
-- `frontend/formulator_plan_mode/app.py` is the only real code — a standalone
-  Streamlit page, not yet routed through a frontend entrypoint.
-- `frontend/sidebar/` and `frontend/project_page/` are empty leftover dirs
-  from an earlier refactor. `project_page/` matches the page-folder pattern;
-  `sidebar/` does not — decide its fate (keep / repurpose / delete) before
-  building on either.
-- Architecture decisions belong to the owner. Propose changes, don't assume
-  them.
+- **Ingredients** (Library) — the first module built in the current pattern:
+  CRUD page with details panel, per-ingredient custom fields, SQLite service
+  + gateway, full test suite.
+- **Formulas** (Library) — v0: overview + hidden detail page (tabs Overview,
+  Composition, Params, Procedure, Documents, Versions), dialog CRUD,
+  procedure panel, new version only on composition change, delete guard
+  against linked batches.
+- **Batches** (Lab) — v0: create-from-formula plan scaled to a target yield,
+  planned-vs-actual recording, lifecycle planned → in progress → completed,
+  hidden detail page, delete-only-while-planned guard. Reverse links to
+  Formulas are live.
+- **DOE** (Analyze) — **legacy**: inherited from the original "Formulator
+  Plan Mode" page and slated for a total revision (`frontend/doe/README.md`).
+- Registered-but-stub pages: dashboard, projects, equipment, test methods,
+  test panels, documents, samples, test reports (§5).
+
+Recorded as **open** in the module letters: the ingredient unit-cost field +
+formula cost contribution (Formulas letter Q8) and the "Formulas using this
+ingredient" reverse count (Ingredients letter decision log 2026-09-09).
+
+**About this section:** it is a deliberately lean snapshot. The authoritative
+current state is the code, `git log`, and the per-module README letters under
+`frontend/<module>/`; keep this section in sync when it drifts (rule 8).
 
 ## 7. How to run
 
-Per the architecture rule, the app is run from the root entrypoint:
+Run the app from the root entrypoint:
 
 ```bash
 uv run python main.py
 ```
 
-⚠️ Until `main.py` actually runs the app, preview the current page directly:
+or launch the frontend router directly during development:
 
 ```bash
-uv run streamlit run frontend/formulator_plan_mode/app.py
+uv run streamlit run frontend/app.py
+```
+
+Run the tests (no network — see `docs/TEST_STRATEGIES.md`):
+
+```bash
+uv run pytest tests/
 ```
 
 ## 8. Notes for agents

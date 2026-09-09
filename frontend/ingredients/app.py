@@ -97,7 +97,7 @@ def _render_details(conn, selected_id: int | None) -> None:
     st.metric(
         "Formulas using this ingredient",
         "0",
-        help="Placeholder — the Formulas module is not implemented yet.",
+        help="Placeholder — the reverse count from Formulas is not wired up yet.",
     )
 
     st.divider()
