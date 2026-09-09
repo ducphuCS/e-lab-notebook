@@ -179,10 +179,10 @@ requests/responses (per `docs/TEST_STRATEGIES.md`).
 
 - **Formulas** (Library): a batch is created *from* a formula — `formula_id`
   + pinned version + planned snapshot (Q1). The Formulas detail Overview tab
-  shows related batches (currently a hardcoded placeholder `0` in
-  `formulas/utils.py`; the count becomes real when Batches lands). Formulas'
-  delete guard (that letter's Q12 — deletion blocked while linked
-  batches/samples exist) activates once real batch links exist — mirroring
+  shows the related batches — real counts and links since 2026-09-03, each
+  row also carrying the pinned formula version since 2026-09-09 (decision
+  log below). Formulas' delete guard (that letter's Q12) blocks deleting a
+  formula that batches reference (live since 2026-09-03) — mirroring
   Batches' own delete guard (Q6). The batch → formula back-link decision is
   this letter's Q1 (the Formulas letter §6 defers it here).
 - **Ingredients** (Library): planned and actual composition rows reference
@@ -440,3 +440,4 @@ source of truth as it evolves.*
 | 2026-09-09 | Batches v0 marked implemented: this README's header said "implementation not started" though the module landed 2026-09-03 (service, gateway, pages, ~78 tests); header updated to reflect the real state | ducphu |
 | 2026-09-09 | Actual-values bug fix (approved): the Composition editor's hidden identity columns (`ingredient_id`/`ingredient_name`) now genuinely ride in the editor data (`st.data_editor` `column_order` hides them from display), so saving actual amounts no longer stores `None` ids and no longer fails backend validation; detail save handlers surface validation problems | ducphu |
 | 2026-09-09 | Save feedback is a small modal result dialog (`save_result_dialog`, shown at the end of the page run from session state): success ✓ / failure ✗ with the validation problems; dismissible (X / ESC / click-outside) or via OK, both clear the pending outcome. Replaces corner toasts — the Streamlit 1.60 frontend closes a toast when its element unmounts, and every save is followed by a rerun/`switch_page` (to refresh the editor + deviations or close the dialog), so toasts were closed before they could be seen — and replaces inline banners (they scroll away / vanish on rerun). Create/edit/delete dialog outcomes route through the same dialog | ducphu |
+| 2026-09-09 | Reverse-link summaries now carry the pinned `formula_version` (`list_batches_by_formula` SELECT + gateway batch-summary contract extended): the Formulas detail Overview tab's "Batches from this formula" table shows a Version column per batch and the open-batch selectbox labels include it, so batches made from an older formula revision stand out once the formula has moved on (§6 bullet updated to match) | ducphu |
