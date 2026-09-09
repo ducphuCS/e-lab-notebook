@@ -213,11 +213,16 @@ def test_composition_editor_df_merges_plan_and_actual() -> None:
         }
     )
     df = utils.composition_editor_df(record)
-    assert list(df.columns) == list(utils.COMPOSITION_EDITOR_COLUMNS)
+    # visible columns first, hidden identity columns appended after them
+    assert list(df.columns) == list(utils.COMPOSITION_EDITOR_COLUMNS) + list(
+        utils.COMPOSITION_EDITOR_HIDDEN_COLUMNS
+    )
     assert len(df) == 2
     row1 = df.iloc[0]
     assert row1["no"] == 1
     assert row1["ingredient"] == "Water"
+    assert row1["ingredient_id"] == 7
+    assert row1["ingredient_name"] == "Water"
     assert row1["planned"] == 2250.0
     assert row1["actual"] == 2240.0
     assert row1["deviation"] == -10.0
@@ -243,8 +248,34 @@ def test_actual_from_editor_keeps_only_recorded_rows() -> None:
     rows = utils.actual_from_editor(df)
     assert [r["no"] for r in rows] == [1, 3]
     assert rows[0]["amount"] == 2240.0
+    assert rows[0]["ingredient_id"] == 7
     assert rows[1]["note"] == "added last"
     assert rows[1]["amount"] is None
+    assert rows[1]["ingredient_id"] == 9
+
+
+def test_editor_to_actual_roundtrip_keeps_int_ids_and_validates() -> None:
+    """Regression: saving actual amounts used to fail with 'Cannot
+    update batch' because the editor dropped its hidden identity columns
+    (COMPOSITION_EDITOR_COLUMNS omitted them from the DataFrame), so
+    actual_from_editor emitted ingredient_id=None and backend validation
+    rejected the row. The hidden columns must ride along in the editor
+    data, and the rebuilt rows must pass backend validation."""
+    from backend.services.batches.validation import validate_batch
+
+    record = _record()  # planned rows: Water (id 7), Oil (id 8)
+    editor = utils.composition_editor_df(record)
+    # simulate the user typing an actual amount into the first row
+    editor.loc[0, "actual"] = 2240.0
+    rows = utils.actual_from_editor(editor)
+    assert rows, "a recorded row was expected"
+    assert rows[0]["no"] == 1
+    assert rows[0]["ingredient_id"] == 7
+    assert rows[0]["ingredient_name"] == "Water"
+    assert rows[0]["amount"] == 2240.0
+    # the stored actual must satisfy the backend's type-only validation
+    payload = {"actual": {"composition": rows}}
+    assert validate_batch(dict(record, **payload)) == []
 
 
 # --- plan editor (edit-while-planned) --------------------------------------

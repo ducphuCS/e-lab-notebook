@@ -1,8 +1,9 @@
 # Batches — Intention Letter
 
-> **Section:** Lab · **Status:** resolved 2026-09-03 — all questions in §9
-> (Q1–Q8) answered by the owner; decisions recorded in §10. Implementation
-> not started.
+> **Section:** Lab · **Status:** resolved + implemented — all questions in §9
+> (Q1–Q8) answered by the owner (2026-09-03); decisions recorded in §10.
+> Batches v0 implemented (service, gateway, overview + hidden detail pages,
+> tests) — see the decision log for follow-ups.
 
 ## 1. Intention
 
@@ -436,3 +437,6 @@ source of truth as it evolves.*
 | 2026-09-03 | Q1 follow-up: batch stores `formula_id` + `formula_name` + `formula_version`, all pinned at creation and immutable — id for links/reverse queries, name + version as the display/history snapshot (`formula_name` added to §5.1) | ducphu |
 | 2026-09-03 | Q8: processing actuals — none in v0 (option b); Processing tab shows planned values read-only; step-by-step execution log recorded as a later phase (owner: important, but too complicated to implement now) | ducphu |
 | 2026-09-03 | Formulas reverse links landed (deferred item, formulas letter §6): `list_batches_by_formula` + `count_batches_by_formula_id` in the batches store/gateway (light summary rows, one GROUP BY for the overview); Formulas overview/detail show real batch counts and link into batch detail; Formulas' delete guard (that letter's Q12) blocks deleting a formula that batches reference — checked in the Formulas delete dialog via the batches service | ducphu |
+| 2026-09-09 | Batches v0 marked implemented: this README's header said "implementation not started" though the module landed 2026-09-03 (service, gateway, pages, ~78 tests); header updated to reflect the real state | ducphu |
+| 2026-09-09 | Actual-values bug fix (approved): the Composition editor's hidden identity columns (`ingredient_id`/`ingredient_name`) now genuinely ride in the editor data (`st.data_editor` `column_order` hides them from display), so saving actual amounts no longer stores `None` ids and no longer fails backend validation; detail save handlers surface validation problems | ducphu |
+| 2026-09-09 | Save feedback is a small modal result dialog (`save_result_dialog`, shown at the end of the page run from session state): success ✓ / failure ✗ with the validation problems; dismissible (X / ESC / click-outside) or via OK, both clear the pending outcome. Replaces corner toasts — the Streamlit 1.60 frontend closes a toast when its element unmounts, and every save is followed by a rerun/`switch_page` (to refresh the editor + deviations or close the dialog), so toasts were closed before they could be seen — and replaces inline banners (they scroll away / vanish on rerun). Create/edit/delete dialog outcomes route through the same dialog | ducphu |

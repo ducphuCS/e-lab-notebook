@@ -15,7 +15,12 @@ import streamlit as st
 from backend.gateway import batches as gw
 from backend.services.batches.store import DEV_DB_PATH
 
-from frontend.batches.dialogs import create_dialog, delete_dialog, edit_dialog
+from frontend.batches.dialogs import (
+    create_dialog,
+    delete_dialog,
+    edit_dialog,
+    show_save_result_if_pending,
+)
 from frontend.batches.utils import BATCHES_TABLE_KEY, batch_stats
 from frontend.common import configure_page
 
@@ -108,3 +113,8 @@ else:
                 edit_dialog(conn, record)
             if c3.button("🗑️ Delete", use_container_width=True):
                 delete_dialog(conn, record)
+
+# A save outcome (create/edit/delete dialog success) may be pending in
+# session_state — show it as the small save-result modal. Only one dialog
+# can be open per run; no other dialog is open here.
+show_save_result_if_pending()

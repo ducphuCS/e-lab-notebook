@@ -17,12 +17,24 @@ import pandas as pd
 # row is deleted; the delete dialog resets it (mirrors Formulas).
 BATCHES_TABLE_KEY = "batches_table"
 
+# Session-state slot for a pending save outcome shown in the small
+# save-result dialog (dialogs.save_result_dialog). Value: {"ok": bool,
+# "msg": str}. Corner toasts are not used — the Streamlit 1.60 frontend
+# closes a toast when its element unmounts on the rerun that follows a
+# save — and inline banners scroll out of view, so a modal is the feedback
+# that survives the rerun and cannot be missed (decision log 2026-09-09).
+SAVE_RESULT_KEY = "batches_save_result"
+
 # Plan editor columns (edit-while-planned): fixed rows from the plan.
 PLAN_EDIT_COLUMNS = ("no", "ingredient", "amount", "uom", "notes")
 
-# Composition tab editor columns. `deviation` is derived in the UI and
-# never stored (same-unit rule); `ingredient_id`/`ingredient_name` are
-# carried hidden so actual rows can be rebuilt from the editor.
+# Composition tab editor columns — the visible set, in display order.
+# `deviation` is derived in the UI and never stored (same-unit rule).
+# Identity is carried by two extra columns (COMPOSITION_EDITOR_HIDDEN_COLUMNS)
+# appended to the editor DataFrame; the page hides them via the editor's
+# column_order (st.data_editor keeps omitted columns in the data, read-only)
+# so actual rows can be rebuilt from the editor without touching the
+# Ingredients service.
 COMPOSITION_EDITOR_COLUMNS = (
     "no",
     "ingredient",
@@ -33,6 +45,11 @@ COMPOSITION_EDITOR_COLUMNS = (
     "deviation",
     "note",
 )
+
+# Hidden identity columns riding along after the visible ones (see above).
+# Kept separate from COMPOSITION_EDITOR_COLUMNS so pages can pass the
+# visible tuple as the editor's column_order.
+COMPOSITION_EDITOR_HIDDEN_COLUMNS = ("ingredient_id", "ingredient_name")
 
 
 def _num(value: object) -> float | None:
@@ -237,10 +254,11 @@ def deviation(
 def composition_editor_df(record: dict) -> pd.DataFrame:
     """Merged planned-vs-actual editor rows (README §4 Composition tab).
 
-    Columns: no, ingredient, planned, plan_uom, actual (editable),
+    Visible columns: no, ingredient, planned, plan_uom, actual (editable),
     actual_uom (editable, prefilled from the plan), deviation (derived),
-    note (editable). Hidden columns ingredient_id/ingredient_name let
-    actual rows be rebuilt without touching the Ingredients service.
+    note (editable). ingredient_id/ingredient_name are appended after them
+    (hidden via the page's column_order) so actual rows keep their spec
+    shape (README §5.1) when rebuilt from the editor.
     """
     planned = planned_rows(record)
     actual_by_no = {row.get("no"): row for row in actual_rows(record)}
@@ -267,7 +285,10 @@ def composition_editor_df(record: dict) -> pd.DataFrame:
                 "note": actual.get("note"),
             }
         )
-    return pd.DataFrame(rows, columns=COMPOSITION_EDITOR_COLUMNS)
+    return pd.DataFrame(
+        rows,
+        columns=COMPOSITION_EDITOR_COLUMNS + COMPOSITION_EDITOR_HIDDEN_COLUMNS,
+    )
 
 
 def actual_from_editor(df: pd.DataFrame | None) -> list[dict]:
@@ -277,6 +298,11 @@ def actual_from_editor(df: pd.DataFrame | None) -> list[dict]:
     untouched rows (blank amount, blank note, uom just prefilled) are
     dropped. Actual rows keep the plan's no/ingredient ids so they can
     line up row by row on the next render.
+
+    Identity keys (ingredient_id/ingredient_name) come from the editor's
+    hidden columns and are emitted only when present and typed — never as
+    None — so the rows pass backend validation (which type-checks keys it
+    finds; README §5.1). Alignment on render is by ``no`` regardless.
     """
     result: list[dict] = []
     if df is None or df.empty:
@@ -286,16 +312,19 @@ def actual_from_editor(df: pd.DataFrame | None) -> list[dict]:
         note = _text(row.get("note")).strip()
         if amount is None and not note:
             continue
-        result.append(
-            {
-                "no": row.get("no") if isinstance(row.get("no"), int) else None,
-                "ingredient_id": row.get("ingredient_id"),
-                "ingredient_name": row.get("ingredient_name"),
-                "amount": amount,
-                "uom": _text(row.get("actual_uom")).strip() or None,
-                "note": note or None,
-            }
-        )
+        recorded: dict = {
+            "no": row.get("no") if isinstance(row.get("no"), int) else None,
+            "amount": amount,
+            "uom": _text(row.get("actual_uom")).strip() or None,
+            "note": note or None,
+        }
+        ingredient_id = row.get("ingredient_id")
+        if isinstance(ingredient_id, int):
+            recorded["ingredient_id"] = ingredient_id
+        ingredient_name = row.get("ingredient_name")
+        if isinstance(ingredient_name, str) and ingredient_name.strip():
+            recorded["ingredient_name"] = ingredient_name
+        result.append(recorded)
     return result
 
 

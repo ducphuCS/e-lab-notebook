@@ -216,6 +216,28 @@ def test_detail_saves_actual_amounts_without_error(db_path) -> None:
     assert updated["actual"] == {"composition": []}
 
 
+def test_detail_save_shows_result_dialog(db_path) -> None:
+    """A successful save queues the save-result dialog; the next page run
+    renders it (dialog *opening* works in AppTest even though in-dialog
+    widget clicks are not modeled — see module docstring)."""
+    conn = gw.connect(db_path)
+    try:
+        record = gw.create_batch(conn, _payload())
+    finally:
+        conn.close()
+
+    at = AppTest.from_file("frontend/batches/detail.py")
+    at.session_state["batches_detail_id"] = record["id"]
+    at.run()
+    assert not any(b.label == "OK" for b in at.button)
+
+    _buttons(at, "Save actual amounts")[0].click()
+    at.run()
+    assert not at.exception
+    assert any("Actual amounts saved." in s.value for s in at.success)
+    assert any(b.label == "OK" for b in at.button)
+
+
 def test_detail_page_missing_batch(db_path) -> None:
     at = AppTest.from_file("frontend/batches/detail.py")
     at.session_state["batches_detail_id"] = 999

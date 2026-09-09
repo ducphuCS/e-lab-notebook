@@ -16,8 +16,14 @@ from backend.gateway import batches as gw
 from backend.services.batches.schema import BATCH_STATUSES
 from backend.services.batches.store import DEV_DB_PATH
 
-from frontend.batches.dialogs import delete_dialog, edit_dialog
+from frontend.batches.dialogs import (
+    delete_dialog,
+    edit_dialog,
+    set_save_result,
+    show_save_result_if_pending,
+)
 from frontend.batches.utils import (
+    COMPOSITION_EDITOR_COLUMNS,
     actual_rows,
     actual_yield,
     actual_from_editor,
@@ -146,9 +152,15 @@ def _render_overview(record: dict) -> None:
                     {"status": status, "actual": actual_patch},
                 )
             except gw.GatewayError as exc:
-                st.error(f"Could not save: {exc}")
+                problems = exc.problems or [str(exc)]
+                set_save_result(
+                    False,
+                    "Could not save run details — " + "; ".join(problems),
+                )
             else:
-                st.toast("Run details saved.")
+                # Rerun refreshes the header metrics; the save-result
+                # dialog opens at the end of that rerun.
+                set_save_result(True, "Run details saved.")
                 st.rerun()
 
     if record.get("owner"):
@@ -171,6 +183,10 @@ def _render_composition(record: dict) -> None:
         composition_editor_df(record),
         hide_index=True,
         width="stretch",
+        # Only the visible columns are displayed; ingredient_id /
+        # ingredient_name stay in the data (read-only) so actual rows can
+        # be rebuilt with their identity (README §5.1).
+        column_order=COMPOSITION_EDITOR_COLUMNS,
         column_config={
             "no": st.column_config.NumberColumn("No", disabled=True),
             "ingredient": st.column_config.TextColumn(
@@ -197,9 +213,16 @@ def _render_composition(record: dict) -> None:
             # Sub-key merge in the gateway preserves yield/observations.
             gw.update_batch(conn, record["id"], {"actual": {"composition": rows}})
         except gw.GatewayError as exc:
-            st.error(f"Could not save actual amounts: {exc}")
+            problems = exc.problems or [str(exc)]
+            set_save_result(
+                False,
+                "Could not save actual amounts — " + "; ".join(problems),
+            )
         else:
-            st.toast("Actual amounts saved.")
+            # Rerun refreshes the editor and its derived deviations from
+            # the stored rows; the save-result dialog opens at the end of
+            # that rerun (see show_save_result_if_pending).
+            set_save_result(True, "Actual amounts saved.")
             st.rerun()
     if actual_rows(record):
         st.caption(f"{len(actual_rows(record))} of {len(planned_rows(record))} ingredient(s) recorded.")
@@ -244,3 +267,8 @@ with tab_processing:
     _render_processing(record)
 with tab_samples:
     _render_samples(record)
+
+# A save outcome (actual amounts / run details / edit or delete dialog) may
+# be pending in session_state — show it as the small save-result modal. Only
+# one dialog can be open per run; no other dialog is open here.
+show_save_result_if_pending()
