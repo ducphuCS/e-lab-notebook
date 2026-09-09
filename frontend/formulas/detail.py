@@ -128,12 +128,18 @@ def _render_overview(record: dict) -> None:
 
     if related_batches:
         st.write("**Batches from this formula**")
+        st.caption(
+            "Each row shows the formula version the batch pinned at "
+            "creation — so batches made from an older revision stand out "
+            "once the formula has moved on."
+        )
         st.dataframe(
             pd.DataFrame(
                 [
                     {
                         "code": row["batch_code"],
                         "name": row["name"],
+                        "version": f"v{row['formula_version']}",
                         "status": row["status"],
                         "updated": (row["updated_at"] or "")[:10],
                     }
@@ -144,7 +150,9 @@ def _render_overview(record: dict) -> None:
             width="stretch",
         )
         labels = [
-            f"{row['batch_code']} — {row['name']}" for row in related_batches
+            f"{row['batch_code']} — {row['name']} "
+            f"(v{row['formula_version']})"
+            for row in related_batches
         ]
         open_col, _ = st.columns([2, 3])
         with open_col:

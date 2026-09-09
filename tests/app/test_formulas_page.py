@@ -301,6 +301,8 @@ def test_detail_shows_related_batches(db_path) -> None:
     # the related-batches table + open control render
     related_tables = [d for d in at.dataframe if "B-0001" in str(d.value)]
     assert related_tables
+    # the pinned formula version shows in the table (v1 in this payload)
+    assert "v1" in str(related_tables[0].value)
     assert any("Open a batch" in s.label for s in at.selectbox)
     assert any(b.label == "Open batch detail" for b in at.button)
 

@@ -168,7 +168,16 @@ def test_list_batches_by_formula_returns_light_summaries(conn) -> None:
 
     rows = store.list_batches_by_formula(conn, 1)
     assert [r["id"] for r in rows] == [b, a]  # most recent first
-    assert set(rows[0]) == {"id", "batch_code", "name", "status", "updated_at"}
+    assert set(rows[0]) == {
+        "id",
+        "batch_code",
+        "name",
+        "formula_version",
+        "status",
+        "updated_at",
+    }
+    # the summary keeps the pinned formula version per batch
+    assert [r["formula_version"] for r in rows] == [3, 3]
     # no JSON payloads in the light summaries
     assert "planned" not in rows[0] and "actual" not in rows[0]
     assert store.list_batches_by_formula(conn, 999) == []

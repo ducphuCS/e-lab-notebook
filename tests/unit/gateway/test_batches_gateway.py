@@ -168,6 +168,7 @@ def test_reverse_link_helpers(conn) -> None:
     assert gw.count_batches_by_formula_id(conn) == {1: 2, 2: 1}
     rows = gw.list_batches_by_formula(conn, 1)
     assert [r["name"] for r in rows] == ["B", "A"]
+    assert all(r["formula_version"] == 3 for r in rows)
     assert gw.list_batches_by_formula(conn, 999) == []
 
 
@@ -176,13 +177,21 @@ def test_validate_batch_summary() -> None:
         "id": 1,
         "batch_code": "B-0001",
         "name": "Run",
+        "formula_version": 3,
         "status": "planned",
         "updated_at": "2026-09-03T10:00:00+00:00",
     }
     assert gw.validate_batch_summary(good) == []
 
-    bad = {"id": "x", "batch_code": "", "name": None, "status": None}
+    bad = {
+        "id": "x",
+        "batch_code": "",
+        "name": None,
+        "formula_version": "three",
+        "status": None,
+    }
     problems = gw.validate_batch_summary(bad)
     assert any("missing fields" in p for p in problems)
     assert any("id" in p for p in problems)
     assert any("batch_code" in p for p in problems)
+    assert any("formula_version" in p for p in problems)

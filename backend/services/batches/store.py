@@ -183,14 +183,17 @@ def list_batches_by_formula(
     conn: sqlite3.Connection, formula_id: int
 ) -> list[dict[str, Any]]:
     """Light summary rows of the batches made from a formula (most recent
-    first): id, batch_code, name, status, updated_at — no JSON payloads.
+    first): id, batch_code, name, formula_version, status, updated_at —
+    no JSON payloads. formula_version is the version the batch pinned at
+    creation, so the related-batches list can show which revision of the
+    formula each batch was made from.
 
     Serves the Formulas page's reverse link (that letter's §6): the
     related-batches list on the formula detail and the delete guard.
     """
     rows = conn.execute(
-        "SELECT id, batch_code, name, status, updated_at FROM batches "
-        "WHERE formula_id = ? ORDER BY id DESC",
+        "SELECT id, batch_code, name, formula_version, status, updated_at "
+        "FROM batches WHERE formula_id = ? ORDER BY id DESC",
         (formula_id,),
     ).fetchall()
     return [dict(row) for row in rows]

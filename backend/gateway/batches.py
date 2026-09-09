@@ -194,7 +194,14 @@ def delete_batch(conn: Any, batch_id: int) -> bool:
     return True
 
 
-_BATCH_SUMMARY_FIELDS = ("id", "batch_code", "name", "status", "updated_at")
+_BATCH_SUMMARY_FIELDS = (
+    "id",
+    "batch_code",
+    "name",
+    "formula_version",
+    "status",
+    "updated_at",
+)
 
 
 def validate_batch_summary(data: dict[str, Any]) -> list[str]:
@@ -211,6 +218,8 @@ def validate_batch_summary(data: dict[str, Any]) -> list[str]:
         problems.append("batch summary 'batch_code' must be a non-empty string.")
     if not isinstance(data.get("name"), str):
         problems.append("batch summary 'name' must be a string.")
+    if not isinstance(data.get("formula_version"), int):
+        problems.append("batch summary 'formula_version' must be an integer.")
     if not isinstance(data.get("status"), str):
         problems.append("batch summary 'status' must be a string.")
     if data.get("updated_at") is not None and not isinstance(
