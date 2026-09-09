@@ -35,6 +35,12 @@ conn = st.session_state.batches_conn
 title_col, add_col = st.columns([5, 1], vertical_alignment="center")
 with title_col:
     st.title("Batches")
+    st.caption(
+        "Each batch's planned composition is a snapshot of its source "
+        "formula at creation — scaled to the batch's target yield and "
+        "frozen there. Editing the formula later never changes existing "
+        "batches."
+    )
 with add_col:
     if st.button(
         "➕ Add batch",

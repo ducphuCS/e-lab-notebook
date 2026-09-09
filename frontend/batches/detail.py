@@ -173,6 +173,13 @@ def _render_composition(record: dict) -> None:
         st.info("This batch has no planned composition.")
         return
 
+    st.caption(
+        "Planned amounts were fixed at creation: derived from this "
+        f"formula's composition ({record['formula_name']} "
+        f"v{record['formula_version']}), scaled to the batch's target "
+        "yield. Later formula edits do not change this batch."
+    )
+
     st.write("**Actual amounts per ingredient**")
     st.caption(
         "Enter what was actually weighed/used. Deviation (actual − "

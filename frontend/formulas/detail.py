@@ -191,6 +191,11 @@ def _render_composition(record: dict) -> None:
             }
         )
     st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+    st.caption(
+        "Batches made from this formula freeze their planned composition "
+        "at creation — a snapshot of this table scaled to each batch's "
+        "target yield. Later edits here do not change existing batches."
+    )
     if percentages is None:
         st.caption(
             "Percentage is not computable — rows use different UOMs "

@@ -36,6 +36,11 @@ conn = st.session_state.formulas_conn
 title_col, add_col = st.columns([5, 1], vertical_alignment="center")
 with title_col:
     st.title("Formulas")
+    st.caption(
+        "Batches made from a formula snapshot that formula's composition "
+        "at creation, scaled to each batch's target yield. Editing the "
+        "formula later never changes its existing batches."
+    )
 with add_col:
     if st.button(
         "➕ Add formula",
