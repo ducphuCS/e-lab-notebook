@@ -41,16 +41,6 @@ with add_col:
         st.session_state.ingredients_confirm_delete_id = None
         st.rerun()
 
-# Smaller metric values in the Details panel (owner request).
-st.html(
-    """
-    <style>
-    [data-testid="stMetricValue"] { font-size: 1.1rem; }
-    </style>
-    """
-)
-
-
 # ------------------------------------------------------------------ data
 if "ingredients_conn" not in st.session_state:
     st.session_state.ingredients_conn = gw.connect(DEV_DB_PATH)

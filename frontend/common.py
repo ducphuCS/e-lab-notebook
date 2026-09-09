@@ -10,9 +10,15 @@ import streamlit as st
 # "Electronic Lab Notebook" regardless of the current page.
 APP_TITLE = "Electronic Lab Notebook"
 
-# Streamlit's default block-container padding leaves a large gap above and
-# below page content; reduce it app-wide.
-_TOP_PADDING_CSS = """
+# Shared, minimal page CSS (AGENTS.md §4: default look, one rule at a
+# time):
+# - Streamlit's default block-container padding leaves a large gap above
+#   and below page content; reduce it app-wide.
+# - st.metric values render at a large font by default, so longer values
+#   (e.g. a formula name + version, a batch code row) truncate. Use the
+#   smaller size Ingredients already applied to its Details panel (owner
+#   request); metric labels keep the default size.
+_SHARED_CSS = """
 <style>
 .block-container {
     padding-top: 1rem;
@@ -20,6 +26,7 @@ _TOP_PADDING_CSS = """
     padding-left: 1.5rem;
     padding-right: 1.5rem;
 }
+[data-testid="stMetricValue"] { font-size: 1.1rem; }
 </style>
 """
 
@@ -35,4 +42,4 @@ def configure_page() -> None:
     """
     st.set_page_config(page_title=APP_TITLE, layout="wide")
     st.set_option("client.toolbarMode", "minimal")
-    st.markdown(_TOP_PADDING_CSS, unsafe_allow_html=True)
+    st.markdown(_SHARED_CSS, unsafe_allow_html=True)
