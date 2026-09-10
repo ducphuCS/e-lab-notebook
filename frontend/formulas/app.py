@@ -15,7 +15,7 @@ import streamlit as st
 from backend.gateway import formulas as gw
 from backend.services.formulas.store import DEV_DB_PATH
 
-from frontend.common import configure_page
+from frontend.common import configure_page, show_pending_notification
 from frontend.formulas.dialogs import (
     batches_connection,
     delete_dialog,
@@ -131,3 +131,6 @@ else:
                 duplicate_dialog(conn, record)
             if c4.button("🗑️ Delete", use_container_width=True):
                 delete_dialog(conn, record)
+
+# Show any queued write outcome (create/update/delete/duplicate) from this run.
+show_pending_notification()

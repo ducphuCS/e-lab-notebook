@@ -22,7 +22,7 @@ from frontend.ingredients.utils import (
     custom_fields_from_df,
     custom_fields_to_df,
 )
-from frontend.common import configure_page
+from frontend.common import configure_page, notify, show_pending_notification
 
 configure_page()
 
@@ -136,6 +136,7 @@ def _render_delete_confirm(conn, record_id: int) -> None:
         except gw.GatewayError as exc:
             st.error(f"Delete failed: {exc}")
         else:
+            notify(True, "Ingredient deleted.")
             st.session_state.ingredients_selected_id = None
             _reset_to_details()
             st.rerun()
@@ -214,17 +215,19 @@ def _render_edit_form(conn, record: dict | None) -> None:
             custom_fields=custom_fields_from_df(custom_editor),
         )
         try:
-            # st.toast survives the rerun below (st.success would not).
             if is_edit:
                 gw.update_ingredient(conn, record["id"], payload)
-                st.toast("Ingredient updated.")
             else:
                 gw.create_ingredient(conn, payload)
-                st.toast("Ingredient created.")
         except gw.GatewayError as exc:
+            # The form stays on screen — keep the error inline, next to it.
             problems = exc.problems or [str(exc)]
             st.error("Could not save ingredient:\n- " + "\n- ".join(problems))
         else:
+            notify(
+                True,
+                "Ingredient updated." if is_edit else "Ingredient created.",
+            )
             _reset_to_details()
             st.rerun()
 
@@ -281,3 +284,6 @@ with details_col:
         _render_delete_confirm(conn, st.session_state.ingredients_confirm_delete_id)
     else:
         _render_details(conn, st.session_state.ingredients_selected_id)
+
+# Show any queued write outcome (create/update/delete) from this run.
+show_pending_notification()

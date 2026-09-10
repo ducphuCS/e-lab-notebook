@@ -16,12 +16,8 @@ from backend.gateway import batches as gw
 from backend.services.batches.schema import BATCH_STATUSES
 from backend.services.batches.store import DEV_DB_PATH
 
-from frontend.batches.dialogs import (
-    delete_dialog,
-    edit_dialog,
-    set_save_result,
-    show_save_result_if_pending,
-)
+from frontend.batches.dialogs import delete_dialog, edit_dialog
+from frontend.common import configure_page, notify, show_pending_notification
 from frontend.batches.utils import (
     COMPOSITION_EDITOR_COLUMNS,
     actual_rows,
@@ -35,7 +31,6 @@ from frontend.batches.utils import (
     target_yield,
     yield_text,
 )
-from frontend.common import configure_page
 
 configure_page()
 
@@ -153,14 +148,14 @@ def _render_overview(record: dict) -> None:
                 )
             except gw.GatewayError as exc:
                 problems = exc.problems or [str(exc)]
-                set_save_result(
+                notify(
                     False,
                     "Could not save run details — " + "; ".join(problems),
                 )
             else:
-                # Rerun refreshes the header metrics; the save-result
-                # dialog opens at the end of that rerun.
-                set_save_result(True, "Run details saved.")
+                # Rerun refreshes the header metrics; the queued outcome is
+                # rendered at the end of that rerun.
+                notify(True, "Run details saved.")
                 st.rerun()
 
     if record.get("owner"):
@@ -221,15 +216,15 @@ def _render_composition(record: dict) -> None:
             gw.update_batch(conn, record["id"], {"actual": {"composition": rows}})
         except gw.GatewayError as exc:
             problems = exc.problems or [str(exc)]
-            set_save_result(
+            notify(
                 False,
                 "Could not save actual amounts — " + "; ".join(problems),
             )
         else:
             # Rerun refreshes the editor and its derived deviations from
-            # the stored rows; the save-result dialog opens at the end of
-            # that rerun (see show_save_result_if_pending).
-            set_save_result(True, "Actual amounts saved.")
+            # the stored rows; the queued outcome is rendered at the end of
+            # that rerun (see show_pending_notification).
+            notify(True, "Actual amounts saved.")
             st.rerun()
     if actual_rows(record):
         st.caption(f"{len(actual_rows(record))} of {len(planned_rows(record))} ingredient(s) recorded.")
@@ -275,7 +270,7 @@ with tab_processing:
 with tab_samples:
     _render_samples(record)
 
-# A save outcome (actual amounts / run details / edit or delete dialog) may
-# be pending in session_state — show it as the small save-result modal. Only
-# one dialog can be open per run; no other dialog is open here.
-show_save_result_if_pending()
+# A write outcome (actual amounts / run details / edit or delete dialog) may
+# be pending in session_state — render it. Only one dialog can be open per
+# run; no other dialog is open here.
+show_pending_notification()

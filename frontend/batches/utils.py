@@ -17,14 +17,6 @@ import pandas as pd
 # row is deleted; the delete dialog resets it (mirrors Formulas).
 BATCHES_TABLE_KEY = "batches_table"
 
-# Session-state slot for a pending save outcome shown in the small
-# save-result dialog (dialogs.save_result_dialog). Value: {"ok": bool,
-# "msg": str}. Corner toasts are not used — the Streamlit 1.60 frontend
-# closes a toast when its element unmounts on the rerun that follows a
-# save — and inline banners scroll out of view, so a modal is the feedback
-# that survives the rerun and cannot be missed (decision log 2026-09-09).
-SAVE_RESULT_KEY = "batches_save_result"
-
 # Plan editor columns (edit-while-planned): fixed rows from the plan.
 PLAN_EDIT_COLUMNS = ("no", "ingredient", "amount", "uom", "notes")
 

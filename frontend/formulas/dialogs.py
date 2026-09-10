@@ -17,6 +17,7 @@ from backend.gateway import ingredients as igw
 from backend.services.formulas.schema import FORMULA_STATUSES
 from backend.services.ingredients.store import DEV_DB_PATH as INGREDIENTS_DB_PATH
 
+from frontend.common import notify
 from frontend.formulas.utils import (
     FORMULAS_TABLE_KEY,
     build_formula_payload,
@@ -164,17 +165,19 @@ def form_dialog(conn: Any, record: dict | None) -> None:
             # own editors in their panels.
         )
         try:
-            # st.toast survives the rerun below (st.success would not).
             if is_edit:
                 gw.update_formula(conn, record["id"], payload)
-                st.toast("Formula updated.")
             else:
                 gw.create_formula(conn, payload)
-                st.toast("Formula created.")
         except gw.GatewayError as exc:
+            # The dialog stays open — keep the error inline, next to the form.
             problems = exc.problems or [str(exc)]
             st.error("Could not save formula:\n- " + "\n- ".join(problems))
         else:
+            notify(
+                True,
+                "Formula updated." if is_edit else "Formula created.",
+            )
             st.rerun()
 
 
@@ -258,7 +261,7 @@ def step_dialog(conn: Any, record: dict, index: int | None) -> None:
             problems = exc.problems or [str(exc)]
             st.error("Could not save step:\n- " + "\n- ".join(problems))
         else:
-            st.toast("Step saved.")
+            notify(True, "Step saved.")
             st.rerun()
 
 
@@ -279,7 +282,7 @@ def delete_step_dialog(conn: Any, record: dict, index: int) -> None:
         except gw.GatewayError as exc:
             st.error(f"Delete failed: {exc}")
         else:
-            st.toast("Step deleted.")
+            notify(True, "Step deleted.")
             st.rerun()
     if c2.button("Cancel", key="cancel_step_delete"):
         st.rerun()
@@ -325,7 +328,7 @@ def delete_dialog(conn: Any, record: dict) -> None:
         except gw.GatewayError as exc:
             st.error(f"Delete failed: {exc}")
         else:
-            st.toast("Formula deleted.")
+            notify(True, "Formula deleted.")
             # The deleted row was selected; drop the stale selection so the
             # overview table does not keep an out-of-bounds index on rerun.
             if FORMULAS_TABLE_KEY in st.session_state:
@@ -353,7 +356,7 @@ def duplicate_dialog(conn: Any, record: dict) -> None:
         except gw.GatewayError as exc:
             st.error(f"Duplicate failed: {exc}")
         else:
-            st.toast(f"Formula duplicated as '{new_record['name']}'.")
+            notify(True, f"Formula duplicated as '{new_record['name']}'.")
             st.rerun()
     if c2.button("Cancel", key="cancel_duplicate"):
         st.rerun()

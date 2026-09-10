@@ -216,10 +216,9 @@ def test_detail_saves_actual_amounts_without_error(db_path) -> None:
     assert updated["actual"] == {"composition": []}
 
 
-def test_detail_save_shows_result_dialog(db_path) -> None:
-    """A successful save queues the save-result dialog; the next page run
-    renders it (dialog *opening* works in AppTest even though in-dialog
-    widget clicks are not modeled — see module docstring)."""
+def test_detail_save_shows_success_toast(db_path) -> None:
+    """A successful save is confirmed non-blockingly by a toast on the
+    page run that follows (failures use the result modal instead)."""
     conn = gw.connect(db_path)
     try:
         record = gw.create_batch(conn, _payload())
@@ -229,12 +228,42 @@ def test_detail_save_shows_result_dialog(db_path) -> None:
     at = AppTest.from_file("frontend/batches/detail.py")
     at.session_state["batches_detail_id"] = record["id"]
     at.run()
+    assert not at.toast
+
+    _buttons(at, "Save actual amounts")[0].click()
+    at.run()
+    assert not at.exception
+    assert any("Actual amounts saved." in t.value for t in at.toast)
+    # Success must not open the blocking result modal.
+    assert not any(b.label == "OK" for b in at.button)
+
+
+def test_detail_save_failure_opens_result_modal(db_path, monkeypatch) -> None:
+    """A failed save queues the failure; the next page run opens the
+    blocking 'Save result' modal (dialog *opening* works in AppTest even
+    though in-dialog widget clicks are not modeled)."""
+    conn = gw.connect(db_path)
+    try:
+        record = gw.create_batch(conn, _payload())
+    finally:
+        conn.close()
+
+    def _boom(*args, **kwargs):
+        raise gw.GatewayError("update failed", problems=["amount must be positive"])
+
+    monkeypatch.setattr(gw, "update_batch", _boom)
+
+    at = AppTest.from_file("frontend/batches/detail.py")
+    at.session_state["batches_detail_id"] = record["id"]
+    at.run()
     assert not any(b.label == "OK" for b in at.button)
 
     _buttons(at, "Save actual amounts")[0].click()
     at.run()
     assert not at.exception
-    assert any("Actual amounts saved." in s.value for s in at.success)
+    assert any(
+        "amount must be positive" in e.value for e in at.error
+    )
     assert any(b.label == "OK" for b in at.button)
 
 

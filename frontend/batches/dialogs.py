@@ -21,7 +21,6 @@ from backend.services.batches.schema import BATCH_STATUSES
 from backend.services.formulas.store import DEV_DB_PATH as FORMULAS_DB_PATH
 
 from frontend.batches.utils import (
-    SAVE_RESULT_KEY,
     BATCHES_TABLE_KEY,
     build_planned,
     formula_options,
@@ -31,6 +30,8 @@ from frontend.batches.utils import (
     planned_rows,
     yield_text,
 )
+
+from frontend.common import notify
 
 
 def _load_formulas() -> list[dict]:
@@ -141,9 +142,9 @@ def create_dialog(conn: Any) -> None:
             problems = exc.problems or [str(exc)]
             st.error("Could not create batch:\n- " + "\n- ".join(problems))
         else:
-            # The dialog closes on the rerun; the outcome is shown by the
-            # small save-result dialog on the page that follows.
-            set_save_result(True, "Batch created.")
+            # The dialog closes on the rerun; the queued outcome is
+            # rendered on the page that follows.
+            notify(True, "Batch created.")
             st.rerun()
     if c2.button("Cancel", key="cancel_create"):
         st.rerun()
@@ -214,7 +215,7 @@ def edit_dialog(conn: Any, record: dict) -> None:
             problems = exc.problems or [str(exc)]
             st.error("Could not save batch:\n- " + "\n- ".join(problems))
         else:
-            set_save_result(True, "Batch updated.")
+            notify(True, "Batch updated.")
             st.rerun()
     if c2.button("Cancel", key="cancel_edit"):
         st.rerun()
@@ -250,7 +251,7 @@ def delete_dialog(conn: Any, record: dict) -> None:
         except gw.GatewayError as exc:
             st.error(f"Delete failed: {exc}")
         else:
-            set_save_result(True, "Batch deleted.")
+            notify(True, "Batch deleted.")
             # The deleted row was selected; drop the stale selection so the
             # overview table does not keep an out-of-bounds index on rerun.
             if BATCHES_TABLE_KEY in st.session_state:
@@ -259,54 +260,3 @@ def delete_dialog(conn: Any, record: dict) -> None:
     if c2.button("Cancel", key="cancel_delete"):
         st.rerun()
 
-
-# --- save-result dialog ---------------------------------------------------
-
-def set_save_result(ok: bool, msg: str) -> None:
-    """Queue a save outcome for the small result dialog (see below).
-
-    Stored in session_state and consumed when the dialog opens/closes, so
-    the modal appears exactly once per save action.
-    """
-    st.session_state[SAVE_RESULT_KEY] = {"ok": ok, "msg": msg}
-
-
-def _clear_save_result() -> None:
-    """on_dismiss callback: X / ESC / click-outside clears the pending
-    outcome so the dialog does not reappear on the next rerun."""
-    st.session_state.pop(SAVE_RESULT_KEY, None)
-
-
-@st.dialog(
-    "Save result", width="small", dismissible=True, on_dismiss=_clear_save_result
-)
-def save_result_dialog() -> None:
-    """Small modal reporting a save outcome (README decision log 2026-09-09).
-
-    Success ✓ or failure ✗ with the validation problems. A modal is used
-    because corner toasts are torn down by the rerun that follows a save
-    in the Streamlit 1.60 frontend, and inline banners scroll away with
-    the page. Dismissible (X / ESC / click-outside) or via OK — both clear
-    the pending outcome.
-    """
-    result = st.session_state.get(SAVE_RESULT_KEY)
-    if not result:
-        # Nothing pending (e.g. reopened on a rerun after a dismissal
-        # already cleared it) — close right away.
-        st.rerun()
-        return
-    if result.get("ok"):
-        st.success(result["msg"], icon=":material/check_circle:")
-    else:
-        st.error(result["msg"], icon=":material/error:")
-    if st.button("OK", type="primary", use_container_width=True):
-        st.session_state.pop(SAVE_RESULT_KEY, None)
-        st.rerun()
-
-
-def show_save_result_if_pending() -> None:
-    """Open the result dialog at the end of a page run when an outcome is
-    queued. Only one dialog may be open at a time; callers ensure no other
-    dialog is open in the same run."""
-    if SAVE_RESULT_KEY in st.session_state:
-        save_result_dialog()

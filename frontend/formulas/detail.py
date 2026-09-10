@@ -12,7 +12,7 @@ from backend.gateway import batches as bgw
 from backend.gateway import formulas as gw
 from backend.services.formulas.store import DEV_DB_PATH
 
-from frontend.common import configure_page
+from frontend.common import configure_page, show_pending_notification
 from frontend.formulas.dialogs import (
     batches_connection,
     delete_step_dialog,
@@ -397,3 +397,6 @@ with tab_documents:
     _render_documents(record)
 with tab_versions:
     _render_versions(conn, formula_id)
+
+# Show any queued write outcome (create/update/delete/duplicate) from this run.
+show_pending_notification()
