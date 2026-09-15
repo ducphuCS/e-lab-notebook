@@ -1,0 +1,12 @@
+{
+  "id": 1,
+  "sample_code": "4A8",
+  "origin": "batch",
+  "batch_id": 12,
+  "source": null,
+  "taken_at": "2026-09-15",
+  "status": "active",
+  "notes": "taken right after mixing",
+  "created_at": "2026-09-15T10:00:00+00:00",
+  "updated_at": "2026-09-15T10:00:00+00:00"
+}

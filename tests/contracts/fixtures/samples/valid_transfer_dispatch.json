@@ -1,0 +1,10 @@
+{
+  "id": 2,
+  "sample_id": 1,
+  "kind": "dispatch",
+  "to_team": "shelf-life",
+  "sent_at": "2026-10-01",
+  "storage_condition": "TA45",
+  "sent_by": "ducphu",
+  "notes": "30-day check"
+}
