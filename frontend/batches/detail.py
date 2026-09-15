@@ -10,6 +10,7 @@ yield + observations on the Overview tab, per-ingredient actual amounts on
 the Composition tab. Partial actual updates are merged sub-key wise by the
 gateway, so the two editor surfaces never clobber each other.
 """
+import pandas as pd
 import streamlit as st
 
 from backend.gateway import batches as gw
@@ -17,6 +18,7 @@ from backend.services.batches.schema import BATCH_STATUSES
 from backend.services.batches.store import DEV_DB_PATH
 
 from frontend.batches.dialogs import delete_dialog, edit_dialog
+from frontend.batches.relations import samples_for_batch
 from frontend.common import configure_page, notify, show_pending_notification
 from frontend.batches.utils import (
     COMPOSITION_EDITOR_COLUMNS,
@@ -249,15 +251,48 @@ def _render_processing(record: dict) -> None:
 
 
 def _render_samples(record: dict) -> None:
-    """Samples + their test reports (placeholders until Samples lands)."""
-    stats = batch_stats(record)
+    """Samples taken from this batch and their test reports (README §6).
+
+    Samples are live (Samples service reverse link); test reports stay a
+    placeholder until Test Reports lands.
+    """
+    related = samples_for_batch(record["id"])
+    stats = batch_stats(record, sample_count=len(related))
     s1, s2 = st.columns(2)
     s1.metric("Samples", stats["samples"])
     s2.metric("Test reports", stats["reports"])
-    st.caption(
-        "Samples taken from this batch — and their test reports — will be "
-        "listed here once the Samples module lands (README §6)."
+    if not related:
+        st.info("No samples taken from this batch yet.")
+        return
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {
+                    "code": row["sample_code"],
+                    "origin": row["origin"],
+                    "status": row["status"],
+                    "taken": (row["taken_at"] or "")[:10],
+                }
+                for row in related
+            ]
+        ),
+        hide_index=True,
+        width="stretch",
     )
+    labels = [f"{row['sample_code']} — {row['status']}" for row in related]
+    open_col, _ = st.columns([2, 3])
+    with open_col:
+        index = st.selectbox(
+            "Open a sample",
+            range(len(related)),
+            format_func=lambda i: labels[i],
+            key=f"related_sample_{record['id']}",
+        )
+        if st.button("Open sample detail", type="primary"):
+            st.switch_page(
+                "samples/detail.py",
+                query_params={"sample_id": str(related[index]["id"])},
+            )
 
 
 # ---------------------------------------------------------------- sections

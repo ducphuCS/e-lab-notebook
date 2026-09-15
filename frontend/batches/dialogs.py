@@ -20,6 +20,7 @@ from backend.gateway import formulas as fgw
 from backend.services.batches.schema import BATCH_STATUSES
 from backend.services.formulas.store import DEV_DB_PATH as FORMULAS_DB_PATH
 
+from frontend.batches.relations import samples_for_batch
 from frontend.batches.utils import (
     BATCHES_TABLE_KEY,
     build_planned,
@@ -28,6 +29,7 @@ from frontend.batches.utils import (
     plan_editor_df,
     plan_from_editor_df,
     planned_rows,
+    samples_block_reason,
     yield_text,
 )
 
@@ -225,18 +227,29 @@ def edit_dialog(conn: Any, record: dict) -> None:
 def delete_dialog(conn: Any, record: dict) -> None:
     """Delete confirmation (README Q6).
 
-    Deletion is allowed only while the batch is *planned* with no linked
-    samples/test reports — v0 has no Samples module yet, so the status is
-    the only live condition (the samples check arrives with Samples).
+    Deletion is allowed only while the batch is *planned* and has no
+    linked samples (test reports join the guard when that module lands).
+    The samples check reads the Samples service reverse link, mirroring
+    the Formulas delete guard reading its batches.
     """
-    deletable = record["status"] == "planned"
-    if not deletable:
+    if record["status"] != "planned":
         st.warning(
             f"**{record['batch_code']}** cannot be deleted: it is "
             f"'{record['status']}', not 'planned'. Only planned batches "
             "with no samples or test reports can be deleted (README Q6)."
         )
         if st.button("Close", key="cancel_delete_blocked"):
+            st.rerun()
+        return
+
+    reason = samples_block_reason(len(samples_for_batch(record["id"])))
+    if reason:
+        st.warning(
+            f"**{record['batch_code']} — {record['name']}** cannot be "
+            f"deleted — {reason} A batch that produced samples keeps its "
+            "traceability (README Q6)."
+        )
+        if st.button("Close", key="cancel_delete_samples_blocked"):
             st.rerun()
         return
 

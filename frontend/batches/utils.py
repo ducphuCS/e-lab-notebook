@@ -216,10 +216,32 @@ def yield_text(value: dict | None) -> str:
     return f"{text} {uom}" if uom else text
 
 
-def batch_stats(record: dict) -> dict[str, int]:
-    """Overview stats. Samples/test reports stay placeholders (0) until
-    the Samples module lands (README §6)."""
-    return {"samples": 0, "reports": 0}
+def batch_stats(
+    record: dict, sample_count: int = 0, report_count: int = 0
+) -> dict[str, int]:
+    """Overview stats. The sample count is real now that Samples has
+    landed (README §6); test reports stay a placeholder (0) until Test
+    Reports lands."""
+    return {
+        "samples": sample_count or 0,
+        "reports": report_count or 0,
+    }
+
+
+def samples_block_reason(sample_count: int | None) -> str | None:
+    """Why a batch cannot be deleted, or None when deletion is allowed.
+
+    A batch that produced samples cannot be deleted (README Q6 / the
+    Samples letter's draft item 2) — samples carry the batch's identity.
+    Mirrors Ingredients' ``formula_usage_block_reason``: the condition
+    lives in another service, so the guard is enforced in the delete
+    confirm and the store delete itself stays unconditional.
+    """
+    count = sample_count or 0
+    if count <= 0:
+        return None
+    noun = "sample" if count == 1 else "samples"
+    return f"{count} {noun} were taken from this batch."
 
 
 # --- deviation (derived, never stored — README §5.1) ----------------------
