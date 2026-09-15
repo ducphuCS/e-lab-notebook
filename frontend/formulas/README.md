@@ -128,9 +128,9 @@ data.
 | tags | json | no | Array of free tags. |
 | description | text | no | |
 | custom_fields | json | no | Per-formula key/value map (same pattern as Ingredients). |
-| composition | json | no | Rows: {no, ingredient_id, role, amount, uom, notes}; percentage and cost contribution derived in UI (Q1, Q8, Q10). |
+| composition | json | no | Rows: {no, ingredient_id, ingredient_name, role, amount, uom, notes}. `ingredient_name` is the **bare-name snapshot** for display (Q1); the ingredient `item_code` is a picker/search affordance only and is never stored (decision log 2026-09-15). Percentage and cost contribution are derived in the UI (Q1, Q8, Q10). |
 | params | json | no | Rows: {parameter, source (ingredient custom field), aggregation, value} — the definition is stored; evaluation is a later phase (Q3). |
-| procedure | json | no | Steps: {name, ingredient_ids[], equipment, duration, params[{name, value, unit}]} — subjects are ingredients from the composition only; processing params are name/value/unit rows (Q11; panel decision 2026-08-27). |
+| procedure | json | no | Steps: {name, ingredients[{ingredient_id, ingredient_name}], equipment, duration, params[{name, value, unit}]} — subjects are ingredients from the composition only; `ingredient_name` follows the composition rule (bare-name snapshot, no item code); processing params are name/value/unit rows (Q11; panel decision 2026-08-27). |
 | version | integer | yes | Current version number; a new version is created only when the composition changes (Q2). |
 | created_at | text | yes | ISO timestamp. |
 | updated_at | text | yes | ISO timestamp. |
@@ -245,6 +245,7 @@ Mirrors the Ingredients test layout (`docs/TEST_STRATEGIES.md`):
   name snapshot for display. Keeps one vocabulary, powers the reverse count,
   and the hybrid case can be added later without schema churn.
 - **Answer**: Option (a) is fine. Sub-ingredients (premixes) can be treated like an ingredient in the master as well, but this is top-of-mind, note that we will discuss later.
+- **Clarification (2026-09-15):** the snapshot is the **bare ingredient name**. The picker label may show `name · item_code` to help search, but the item code is a display/search affordance only and is never stored (see the §5.1 field note and the decision log 2026-09-15).
 
 ### Q2. Versions — how much versioning in v0?
 
@@ -430,3 +431,4 @@ source of truth as it evolves.*
 | 2026-09-03 | Batches reverse link live: Batches service gained `list_batches_by_formula` (light summaries) + `count_batches_by_formula_id` (one GROUP BY); Formulas overview "batches" column and detail Overview "related batches" are real counts with links into batch detail; Q12 delete guard now blocks deleting a formula that batches reference — enforced in the delete dialog (`delete_block_reason` pure helper), since the condition lives in another service; samples/test reports stay placeholders until those modules land | ducphu |
 | 2026-09-09 | Formulas v0 marked implemented: this README's header said "implementation not started" although the module landed 2026-08-26 (service, gateway, overview + hidden detail pages, tests); header updated to reflect the real state (mirrors the Batches header fix 2026-09-09). Open items: the Q8 ingredient unit-cost field + formula cost contribution are still **not implemented** (no cost column in the Composition tab — `detail.py` defers to this letter), and the "Formulas using this ingredient" metric on Ingredients remains a hardcoded "0" (see the Ingredients letter decision log 2026-09-09) | ducphu |
 | 2026-09-09 | Relationship reminder captions (mirrors the Batches letter decision log 2026-09-09): Formulas overview caption under the page title + detail Composition tab note — batches made from a formula freeze their planned composition at creation (a snapshot of the formula, scaled to each batch's target yield); later formula edits never change existing batches | ducphu |
+| 2026-09-15 | Composition write-path fix (approved): the ingredient picker label "name · item_code" was leaking into the stored `ingredient_name` (e.g. `Lá chanh · LC`). Storage keeps the id + **bare name** snapshot (Q1 unchanged); the item code stays a picker/search affordance only. `ingredient_options` now returns a `label -> {id, name}` lookup, `composition_from_df` decodes the label back to the bare name, and `composition_to_df` re-renders the label so the editor selectbox still matches. Also fixed the Versions diff, whose ingredient column came out blank because it fed already-display rows (`ingredient`) into `composition_to_df` (which expected `ingredient_name`) | ducphu |

@@ -58,48 +58,75 @@ def custom_fields_from_df(df: pd.DataFrame | None) -> dict[str, str]:
 
 # --- ingredient options ----------------------------------------------------
 
-def ingredient_options(records: list[dict]) -> tuple[list[str], dict[str, int]]:
-    """Display options for the composition selectbox + display -> id map.
+def ingredient_options(
+    records: list[dict],
+) -> tuple[list[str], dict[str, dict]]:
+    """Display options for the composition selectbox + label lookup.
 
     Each option is "name · item_code" when an item code exists (matches
-    the DOE drafting vocabulary), else just the name.
+    the DOE drafting vocabulary), else just the name. The item code is a
+    **picker/search affordance only** — the stored composition keeps the
+    bare name (see ``composition_from_df``).
+
+    Returns ``(options, lookup)`` where ``lookup`` maps each label to
+    ``{"id": int, "name": str}`` so callers can resolve a selection back
+    to the stored identity (id + bare name).
     """
     options: list[str] = []
-    name_to_id: dict[str, int] = {}
+    lookup: dict[str, dict] = {}
     for record in records:
-        label = record.get("name") or ""
+        name = record.get("name") or ""
         item_code = record.get("item_code")
-        if item_code:
-            label = f"{label} · {item_code}"
+        label = f"{name} · {item_code}" if item_code else name
         if not label.strip():
             continue
         options.append(label)
-        name_to_id[label] = int(record["id"])
-    return options, name_to_id
+        lookup[label] = {"id": int(record["id"]), "name": name}
+    return options, lookup
 
 
 # --- composition -----------------------------------------------------------
 
-def composition_to_df(composition: list[dict] | None) -> pd.DataFrame:
-    """Stored rows -> editor/display DataFrame (README §5.1 Q1)."""
-    rows = [
-        {
-            "no": item.get("no"),
-            "ingredient": item.get("ingredient_name"),
-            "role": item.get("role"),
-            "amount": item.get("amount"),
-            "uom": item.get("uom"),
-            "notes": item.get("notes"),
-        }
-        for item in composition or []
-    ]
+def composition_to_df(
+    composition: list[dict] | None, lookup: dict[str, dict] | None = None
+) -> pd.DataFrame:
+    """Stored rows -> editor/display DataFrame (README §5.1 Q1).
+
+    ``lookup`` is the ``ingredient_options`` label map. When provided, the
+    stored **bare** ``ingredient_name`` is rendered back as its picker
+    label ("name · item_code") so the editor's ingredient selectbox value
+    matches one of its options. Without a lookup (e.g. the version diff,
+    whose rows already carry ``ingredient``) the stored name is shown as-is.
+    """
+    name_to_label = {
+        entry["name"]: label for label, entry in (lookup or {}).items()
+    }
+    rows = []
+    for item in composition or []:
+        # ``ingredient`` fallback: version-diff rows are already display rows.
+        stored = item.get("ingredient_name") or item.get("ingredient")
+        rows.append(
+            {
+                "no": item.get("no"),
+                "ingredient": name_to_label.get(stored, stored),
+                "role": item.get("role"),
+                "amount": item.get("amount"),
+                "uom": item.get("uom"),
+                "notes": item.get("notes"),
+            }
+        )
     return pd.DataFrame(rows, columns=COMPOSITION_DISPLAY_COLUMNS)
 
 
 def composition_from_df(
-    df: pd.DataFrame | None, name_to_id: dict[str, int]
+    df: pd.DataFrame | None, lookup: dict[str, dict]
 ) -> list[dict]:
     """Editor DataFrame -> stored rows.
+
+    ``lookup`` is the ``ingredient_options`` label map. The picker label
+    ("name · item_code") is decoded back to the ingredient id + **bare
+    name**, so the stored ``ingredient_name`` never carries the item code
+    (a display/search affordance only — decision log 2026-09-15).
 
     Rows without an ingredient and without an amount are treated as blank
     and dropped. ``no`` is assigned 1..n in row order.
@@ -119,12 +146,13 @@ def composition_from_df(
         kept.append(row)
     for i, row in enumerate(kept):
         label = _cell_text(row.get("ingredient")).strip()
+        entry = lookup.get(label)
         amount = row.get("amount")
         result.append(
             {
                 "no": i + 1,
-                "ingredient_id": name_to_id.get(label),
-                "ingredient_name": label,
+                "ingredient_id": entry["id"] if entry else None,
+                "ingredient_name": entry["name"] if entry else label,
                 "role": _cell_text(row.get("role")).strip() or None,
                 "amount": amount
                 if isinstance(amount, (int, float)) and not isinstance(amount, bool)

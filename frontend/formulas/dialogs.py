@@ -81,7 +81,7 @@ def form_dialog(conn: Any, record: dict | None) -> None:
     record_id = record.get("id", "new")
 
     ingredients = _load_ingredients()
-    options, name_to_id = ingredient_options(ingredients)
+    options, ingredient_lookup = ingredient_options(ingredients)
 
     st.markdown(f"### {'Edit formula' if is_edit else 'New formula'}")
     with st.form(f"formula_form_{record_id}"):
@@ -113,7 +113,7 @@ def form_dialog(conn: Any, record: dict | None) -> None:
                 "No ingredients yet — add them on the Ingredients page first."
             )
         composition_editor = st.data_editor(
-            composition_to_df(record.get("composition")),
+            composition_to_df(record.get("composition"), ingredient_lookup),
             num_rows="dynamic",
             hide_index=True,
             width="stretch",
@@ -158,7 +158,7 @@ def form_dialog(conn: Any, record: dict | None) -> None:
             tags=tags,
             description=description,
             custom_fields=custom_fields_from_df(custom_editor),
-            composition=composition_from_df(composition_editor, name_to_id),
+            composition=composition_from_df(composition_editor, ingredient_lookup),
             # Params and procedure are NOT edited here — the gateway merges
             # the payload over the current record, so omitting them preserves
             # the existing values on edit (empty on create). They get their

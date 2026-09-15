@@ -34,10 +34,29 @@ def test_ingredient_options_map() -> None:
         {"id": 1, "name": "Water", "item_code": "W-1"},
         {"id": 2, "name": "Oil", "item_code": None},
     ]
-    options, name_to_id = ingredient_options(records)
+    options, lookup = ingredient_options(records)
     assert options == ["Water · W-1", "Oil"]
-    assert name_to_id["Water · W-1"] == 1
-    assert name_to_id["Oil"] == 2
+    assert lookup["Water · W-1"] == {"id": 1, "name": "Water"}
+    assert lookup["Oil"] == {"id": 2, "name": "Oil"}
+
+
+def test_composition_from_df_stores_bare_name_not_item_code() -> None:
+    """Regression: the picker label "name · item_code" must never leak
+    into the stored ingredient_name (decision log 2026-09-15)."""
+    df = pd.DataFrame(
+        {
+            "ingredient": ["Lá chanh · LC"],
+            "role": [None],
+            "amount": [1.0],
+            "uom": ["g"],
+            "notes": [None],
+        }
+    )
+    lookup = {"Lá chanh · LC": {"id": 10, "name": "Lá chanh"}}
+    rows = composition_from_df(df, lookup)
+    assert rows[0]["ingredient_id"] == 10
+    assert rows[0]["ingredient_name"] == "Lá chanh"
+    assert "·" not in rows[0]["ingredient_name"]
 
 
 def test_composition_from_df_drops_blank_rows_and_numbers() -> None:
@@ -50,11 +69,15 @@ def test_composition_from_df_drops_blank_rows_and_numbers() -> None:
             "notes": [None, None, None],
         }
     )
-    rows = composition_from_df(df, {"Water · W-1": 1, "Oil": 2})
+    lookup = {
+        "Water · W-1": {"id": 1, "name": "Water"},
+        "Oil": {"id": 2, "name": "Oil"},
+    }
+    rows = composition_from_df(df, lookup)
     assert len(rows) == 2
     assert rows[0]["no"] == 1
     assert rows[0]["ingredient_id"] == 1
-    assert rows[0]["ingredient_name"] == "Water · W-1"
+    assert rows[0]["ingredient_name"] == "Water"
     assert rows[0]["amount"] == 90.0
     assert rows[1]["no"] == 2
     assert rows[1]["amount"] == 10.0
@@ -83,6 +106,34 @@ def test_composition_to_df_columns() -> None:
     assert df.iloc[0]["amount"] == 90.0
 
 
+def test_composition_to_df_renders_picker_label_from_lookup() -> None:
+    """Stored bare names round-trip back to their "name · item_code"
+    label so the editor selectbox value matches its options."""
+    composition = [
+        {"no": 1, "ingredient_id": 10, "ingredient_name": "Lá chanh",
+         "role": None, "amount": 1.0, "uom": "g", "notes": None},
+        {"no": 2, "ingredient_id": 1, "ingredient_name": "Muối",
+         "role": None, "amount": 1.0, "uom": "g", "notes": None},
+    ]
+    lookup = {
+        "Lá chanh · LC": {"id": 10, "name": "Lá chanh"},
+        "Muối": {"id": 1, "name": "Muối"},
+    }
+    df = composition_to_df(composition, lookup)
+    assert list(df["ingredient"]) == ["Lá chanh · LC", "Muối"]
+
+
+def test_composition_to_df_accepts_already_display_rows() -> None:
+    """The version diff passes display rows (key ``ingredient``) — the
+    ingredient column must not come out blank (regression)."""
+    display_rows = [
+        {"no": 1, "ingredient": "Lá chanh", "role": None,
+         "amount": 1.0, "uom": "g", "notes": None}
+    ]
+    df = composition_to_df(display_rows)
+    assert df.iloc[0]["ingredient"] == "Lá chanh"
+
+
 def test_params_from_df_drops_blank_parameter() -> None:
     df = pd.DataFrame(
         {
@@ -104,13 +155,13 @@ def test_params_from_df_drops_blank_parameter() -> None:
 
 def test_composition_step_options_unique() -> None:
     composition = [
-        {"ingredient_id": 1, "ingredient_name": "Water · W-1"},
+        {"ingredient_id": 1, "ingredient_name": "Water"},
         {"ingredient_id": 2, "ingredient_name": "Oil"},
-        {"ingredient_id": 1, "ingredient_name": "Water · W-1"},
+        {"ingredient_id": 1, "ingredient_name": "Water"},
     ]
     options, name_to_id = composition_step_options(composition)
-    assert options == ["Water · W-1", "Oil"]
-    assert name_to_id == {"Water · W-1": 1, "Oil": 2}
+    assert options == ["Water", "Oil"]
+    assert name_to_id == {"Water": 1, "Oil": 2}
     assert composition_step_options(None) == ([], {})
 
 
