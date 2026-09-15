@@ -17,10 +17,12 @@ from backend.gateway import ingredients as gw
 from backend.services.ingredients.schema import INGREDIENT_STATES
 from backend.services.ingredients.store import DEV_DB_PATH
 
+from frontend.ingredients.relations import formula_counts_by_ingredient
 from frontend.ingredients.utils import (
     build_ingredient_payload,
     custom_fields_from_df,
     custom_fields_to_df,
+    formula_usage_block_reason,
 )
 from frontend.common import configure_page, notify, show_pending_notification
 
@@ -94,10 +96,11 @@ def _render_details(conn, selected_id: int | None) -> None:
     st.metric("Notes", record["notes"] or "—")
 
     st.divider()
+    formula_count = formula_counts_by_ingredient().get(record["id"], 0)
     st.metric(
         "Formulas using this ingredient",
-        "0",
-        help="Placeholder — the reverse count from Formulas is not wired up yet.",
+        formula_count,
+        help="How many formulas reference this ingredient in their composition.",
     )
 
     st.divider()
@@ -124,6 +127,22 @@ def _render_delete_confirm(conn, record_id: int) -> None:
         st.warning("The selected ingredient no longer exists.")
         st.session_state.ingredients_confirm_delete_id = None
         return
+
+    # Guard reads the reverse link from the Formulas service (README §6):
+    # a referenced ingredient cannot be deleted, mirroring the Formulas
+    # delete guard against linked batches.
+    formula_count = formula_counts_by_ingredient().get(record_id, 0)
+    reason = formula_usage_block_reason(formula_count)
+    if reason:
+        st.warning(
+            f"**{record['name']}** (ID {record_id}) cannot be deleted — "
+            f"{reason} Remove it from those formulas first."
+        )
+        if st.button("Close", key=f"close_del_blocked_{record_id}"):
+            _reset_to_details()
+            st.rerun()
+        return
+
     st.warning(
         f"Delete **{record['name']}** (ID {record_id})? This cannot be undone."
     )

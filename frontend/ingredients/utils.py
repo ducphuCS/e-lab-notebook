@@ -47,6 +47,23 @@ def custom_fields_from_df(df: pd.DataFrame | None) -> dict[str, dict[str, str]]:
     return result
 
 
+def formula_usage_block_reason(formula_count: int | None) -> str | None:
+    """Why an ingredient cannot be deleted, or None when deletion is
+    allowed (README §6).
+
+    Ingredients referenced by at least one formula are protected: formula
+    composition rows keep the ingredient id. Mirrors
+    ``frontend/formulas/utils.delete_block_reason`` — the condition lives
+    in another service, so the guard is enforced in the delete confirm
+    and the store delete itself stays unconditional.
+    """
+    count = formula_count or 0
+    if count <= 0:
+        return None
+    noun = "formula" if count == 1 else "formulas"
+    return f"{count} {noun} use this ingredient."
+
+
 def build_ingredient_payload(
     name: str,
     item_code: str = "",
