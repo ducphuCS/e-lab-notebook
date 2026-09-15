@@ -145,6 +145,16 @@ def duplicate_formula(
     return _checked(record, "service returned a malformed formula record.")
 
 
+def count_formulas_by_ingredient_id(conn: Any) -> dict[int, int]:
+    """{ingredient_id: formula count} for the Ingredients reverse link.
+
+    Read-only reverse lookup (frontend/ingredients/README.md §6). The
+    response is a plain integer map, so it needs no record-shape check —
+    mirrors the Batches ``count_batches_by_formula_id``.
+    """
+    return store.count_formulas_by_ingredient_id(conn)
+
+
 def list_formula_versions(conn: Any, formula_id: int) -> list[dict[str, Any]]:
     rows = store.list_formula_versions(conn, formula_id)
     for row in rows:

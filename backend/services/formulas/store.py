@@ -88,6 +88,39 @@ def list_formulas(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     return [_row_to_dict(row) for row in rows]
 
 
+def count_formulas_by_ingredient_id(
+    conn: sqlite3.Connection,
+) -> dict[int, int]:
+    """{ingredient_id: formula count} from current compositions.
+
+    Serves the Ingredients page's reverse link
+    (frontend/ingredients/README.md §6): how many formulas reference an
+    ingredient. Composition rows are stored as JSON, so this mirrors the
+    Batches ``count_batches_by_formula_id`` with a parse instead of a
+    single GROUP BY. A formula counts once per ingredient even when the
+    ingredient appears in several composition rows; historical
+    ``formula_versions`` snapshots are ignored (not live references).
+    """
+    counts: dict[int, int] = {}
+    rows = conn.execute("SELECT composition FROM formulas").fetchall()
+    for row in rows:
+        try:
+            composition = json.loads(row["composition"] or "[]")
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(composition, list):
+            continue
+        referenced = {
+            entry.get("ingredient_id")
+            for entry in composition
+            if isinstance(entry, dict)
+        }
+        for ingredient_id in referenced:
+            if isinstance(ingredient_id, int):
+                counts[ingredient_id] = counts.get(ingredient_id, 0) + 1
+    return counts
+
+
 def get_formula(
     conn: sqlite3.Connection, formula_id: int
 ) -> dict[str, Any] | None:
