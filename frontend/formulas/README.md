@@ -152,12 +152,14 @@ the gateway validates requests/responses (per `docs/TEST_STRATEGIES.md`).
 
 ## 6. Dependencies on other modules
 
-- **Ingredients** (Library): composition rows reference ingredients by id —
-  this is what fills the placeholder "Formulas using this ingredient" metric
-  on the Ingredients details panel (currently hardcoded `"0"`). When
-  Formulas lands, the ingredient master also gains a unit-cost field (cost
-  per uom) — see the Ingredients letter decision log (Q8). Keep field
-  naming consistent (item code / item description).
+- **Ingredients** (Library): composition rows reference ingredients by id.
+  That reverse link is **live** (2026-09-10): the Ingredients details panel
+  shows the real count, and an ingredient used by a formula cannot be
+  deleted (guarded on the Ingredients side via a page-layer read -
+  `count_formulas_by_ingredient_id` in this service's store/gateway; see the
+  Ingredients letter §6). Still **open**: the ingredient master has no
+  unit-cost field (cost per uom) — see the Ingredients letter decision log
+  (Q8). Keep field naming consistent (item code / item description).
 - **Projects** (Overview): `project` is free text until Projects lands (Q9).
 - **Batches** (Lab, live since 2026-09-03): batches are produced *from* a
   formula — `formula_id` is stored on the batch (that letter's Q1). The

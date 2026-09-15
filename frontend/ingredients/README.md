@@ -97,13 +97,20 @@ DBs, never the dev DB.
 - **External item-code system:** source of `item_code` / `item_description`.
   No sync/import in v0 — fields are filled manually.
 - **Formulas** (Library): Formulas v0 landed 2026-08-26 and its composition
-  rows reference ingredients by id (one vocabulary) — the reverse metric is
-  no longer gated on Formulas landing. Two coordinated items remain **open**
-  (decision log 2026-09-09): the "Formulas using this ingredient" metric on
-  the details panel is still a hardcoded placeholder "0" (the reverse count
-  was never wired — the mirror of the Batches→Formulas reverse link, done
-  2026-09-03), and the ingredient master still has **no unit-cost field**
-  (Formulas letter Q8), so formula cost contribution is unimplemented.
+  rows reference ingredients by id (one vocabulary). The reverse link is
+  **live** (2026-09-10): the details panel's "Formulas using this
+  ingredient" metric shows the real count, and an ingredient referenced by
+  at least one formula **cannot be deleted** (guarded in the delete confirm
+  via `formula_usage_block_reason`, the mirror of the Formulas Q12 guard
+  against linked batches; the store delete stays unconditional). The count
+  reads live compositions only — historical `formula_versions` snapshots do
+  not keep an ingredient referenced. Query: Formulas store/gateway
+  `count_formulas_by_ingredient_id` (one query, composition JSON parsed in
+  Python, one count per formula even if the ingredient repeats); the page
+  owns the call via `frontend/ingredients/relations.py`, mirroring the
+  Formulas → Batches page-layer pattern. Still **open**: the ingredient
+  master has **no unit-cost field** (Formulas letter Q8), so formula cost
+  contribution is unimplemented.
 - **DOE** (Analyze): reads `item_code` / `item_description` — keep field
   naming consistent.
 
@@ -219,4 +226,4 @@ source of truth as it evolves.*
 | 2026-09-07 | Layout: details panel moved to the narrow **left** column; the list stays wide on the right | ducphu |
 | 2026-09-07 | Custom fields: entries gain `unit`; stored shape `{name: {value, unit}}`; validation accepts only this shape; legacy plain-string rows migrated in the dev DB | ducphu |
 | 2026-09-07 | Temporary in-app legacy custom-field migration (added earlier this day, commit ebf9d35) **removed** — all real-user DBs migrated. Tooling preserved standalone in `archive/ingredients_custom_field_migration.py` | ducphu |
-| 2026-09-09 | Formulas v0 landed (2026-08-26) but two coordinated items from the Formulas letter stayed open: the "Formulas using this ingredient" reverse metric remains a placeholder "0" (never wired — mirror of the Batches→Formulas reverse link done 2026-09-03), and the ingredient unit-cost field (cost per uom, Formulas letter Q8) was **not** added — formula cost contribution unimplemented. §6 rewritten to reflect reality; the metric's help text in `ingredients/app.py` no longer claims the Formulas module "is not implemented" | ducphu |
+| 2026-09-10 | Reverse link **live**: "Formulas using this ingredient" shows the real count (0 for unused), and delete is **blocked** while at least one formula references the ingredient — `count_formulas_by_ingredient_id` in the Formulas store/gateway, page-layer `relations.formulas_connection` (mirrors Formulas → Batches), pure `utils.formula_usage_block_reason`, guard in the delete confirm (store delete unconditional, like Formulas Q12); counts live compositions only, not version snapshots. Unit-cost field (Formulas letter Q8) stays **open** | ducphu |

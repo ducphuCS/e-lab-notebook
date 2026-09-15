@@ -110,8 +110,10 @@ samples, test reports), Analyze (DOE).
   test panels, documents, samples, test reports (§5).
 
 Recorded as **open** in the module letters: the ingredient unit-cost field +
-formula cost contribution (Formulas letter Q8) and the "Formulas using this
-ingredient" reverse count (Ingredients letter decision log 2026-09-09).
+formula cost contribution (Formulas letter Q8). The "Formulas using this
+ingredient" reverse count is **live** (Ingredients letter, 2026-09-10): the
+Ingredients details panel shows the real count and blocks deleting an
+ingredient that a formula references.
 
 **About this section:** it is a deliberately lean snapshot. The authoritative
 current state is the code, `git log`, and the per-module README letters under
