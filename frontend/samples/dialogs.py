@@ -57,6 +57,20 @@ def _load_batches() -> list[dict]:
     return list(batch_index().values())
 
 
+def _regenerate_code(conn: Any) -> None:
+    """Suggest a fresh sample code (README Q3/Q11).
+
+    Runs as an ``on_click`` callback: it fires before the next script run
+    instantiates the code widget, so Streamlit allows the assignment.
+    Assigning inside the button body instead would raise
+    ``StreamlitAPIException`` — the widget with that key already exists in
+    the current run.
+    """
+    st.session_state[_NEW_CODE_KEY] = suggest_sample_code(
+        _existing_codes(conn)
+    )
+
+
 @st.dialog("New sample", width="medium")
 def create_dialog(conn: Any) -> None:
     """Create a sample (README Q1/Q3/Q7/Q11).
@@ -66,6 +80,23 @@ def create_dialog(conn: Any) -> None:
     initial retention transfer's storage condition is chosen here.
     """
     st.markdown("### New sample")
+    with st.expander("How samples work"):
+        st.markdown(
+            "A sample is the Lab's atomic unit; the traceability chain is "
+            "**formula → batch → sample → test report**.\n\n"
+            "- **Origin** — from a batch, or a standalone **benchmark** "
+            "(e.g. a market product).\n"
+            "- **Sample code** — a unique 3-character code. One is "
+            "suggested; confirm it or type your own. It is frozen after "
+            "creation.\n"
+            "- **Retention transfer** — every sample gets one in-house "
+            "*retention* record with a storage condition. It is read-only "
+            "and anchors the sample's future test reports.\n"
+            "- **Dispatches** — sending the sample to another team "
+            "(shelf-life, microbiology) is recorded later, on the detail "
+            "page's **Transfers** tab. A dispatched sample cannot be "
+            "deleted."
+        )
     batches = _load_batches()
     options, label_to_id = batch_options(batches)
 
@@ -103,11 +134,12 @@ def create_dialog(conn: Any) -> None:
         max_chars=3,
         help="3 characters (A–Z, 0–9); ambiguous characters are excluded.",
     )
-    if regen_col.button("🔄 Suggest another", key="regen_sample_code"):
-        st.session_state[_NEW_CODE_KEY] = suggest_sample_code(
-            _existing_codes(conn)
-        )
-        st.rerun()
+    regen_col.button(
+        "🔄 Suggest another",
+        key="regen_sample_code",
+        on_click=_regenerate_code,
+        args=(conn,),
+    )
 
     taken = st.date_input("Taken date *", value=date.today())
     status = st.selectbox(
@@ -116,7 +148,12 @@ def create_dialog(conn: Any) -> None:
         index=SAMPLE_STATUSES.index("active"),
     )
     storage = st.selectbox(
-        "Retention storage condition *", STORAGE_CONDITIONS
+        "Retention storage condition *",
+        STORAGE_CONDITIONS,
+        help=(
+            "Set once at creation and read-only afterwards; it anchors "
+            "the sample's test reports."
+        ),
     )
     notes = st.text_area("Notes")
 
