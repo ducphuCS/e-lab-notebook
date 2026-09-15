@@ -44,6 +44,40 @@ def _payload(**overrides) -> dict:
     return data
 
 
+def test_count_formulas_by_ingredient_id_counts_once_per_formula(conn) -> None:
+    # A formula that references ingredient 1 twice still counts once.
+    repeated = _changed_composition(95.0)
+    repeated.append({**repeated[0], "no": 2, "role": "co-solvent"})
+    store.create_formula(conn, _payload(composition=repeated))
+    store.create_formula(
+        conn,
+        _payload(
+            name="Emulsion Y",
+            composition=[{**repeated[0], "ingredient_id": 2}],
+        ),
+    )
+    store.create_formula(conn, _payload(name="Empty", composition=[]))
+
+    assert store.count_formulas_by_ingredient_id(conn) == {1: 1, 2: 1}
+
+
+def test_count_formulas_by_ingredient_id_ignores_version_snapshots(conn) -> None:
+    # Editing composition to drop an ingredient must drop its reference;
+    # the old version snapshot does not keep the ingredient alive.
+    formula_id = store.create_formula(conn, _payload())
+    assert store.update_formula(conn, formula_id, {"composition": []}) is True
+
+    # the history still holds the old composition (version 1), but only
+    # the live composition counts as a reference
+    versions = store.list_formula_versions(conn, formula_id)
+    assert versions[0]["snapshot"]["composition"][0]["ingredient_id"] == 1
+    assert store.count_formulas_by_ingredient_id(conn) == {}
+
+
+def test_count_formulas_by_ingredient_id_empty(conn) -> None:
+    assert store.count_formulas_by_ingredient_id(conn) == {}
+
+
 def _changed_composition(amount: float = 95.0) -> list[dict]:
     return [
         {

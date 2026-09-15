@@ -10,14 +10,23 @@ and stay isolated from each other.
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from backend.gateway import formulas as fgw
 from backend.gateway import ingredients as gw
 
 
 @pytest.fixture()
 def db_path(tmp_path, monkeypatch):
-    """Temp dev-DB path for the page under test."""
+    """Temp dev-DB path for the page under test.
+
+    The page also reads the Formulas service for the reverse-link count
+    (README §6), so that path is patched too — tests stay hermetic.
+    """
     path = tmp_path / "ingredients.db"
     monkeypatch.setattr("backend.services.ingredients.store.DEV_DB_PATH", path)
+    monkeypatch.setattr(
+        "backend.services.formulas.store.DEV_DB_PATH",
+        tmp_path / "formulas.db",
+    )
     return path
 
 
@@ -148,5 +157,75 @@ def test_details_edit_and_delete_flow(db_path) -> None:
     conn = gw.connect(db_path)
     try:
         assert gw.list_ingredients(conn) == []
+    finally:
+        conn.close()
+
+
+def _seed_formula_using(db_path, ingredient_id: int) -> None:
+    """A formula whose live composition references the ingredient."""
+    conn = fgw.connect(db_path.parent / "formulas.db")
+    try:
+        fgw.create_formula(
+            conn,
+            {
+                "name": "Emulsion X",
+                "status": "draft",
+                "composition": [
+                    {
+                        "no": 1,
+                        "ingredient_id": ingredient_id,
+                        "ingredient_name": "Water",
+                        "role": "solvent",
+                        "amount": 90.0,
+                        "uom": "g",
+                        "notes": None,
+                    }
+                ],
+            },
+        )
+    finally:
+        conn.close()
+
+
+def test_details_shows_formula_usage_count(db_path) -> None:
+    conn = gw.connect(db_path)
+    try:
+        record = gw.create_ingredient(conn, {"name": "Water"})
+    finally:
+        conn.close()
+    _seed_formula_using(db_path, record["id"])
+
+    at = _page()
+    at.session_state["ingredients_selected_id"] = record["id"]
+    at.run()
+
+    assert not at.exception
+    metric = [
+        m for m in at.metric if m.label == "Formulas using this ingredient"
+    ]
+    assert metric and str(metric[0].value) == "1"
+
+
+def test_delete_blocked_while_a_formula_uses_the_ingredient(db_path) -> None:
+    conn = gw.connect(db_path)
+    try:
+        record = gw.create_ingredient(conn, {"name": "Water"})
+    finally:
+        conn.close()
+    _seed_formula_using(db_path, record["id"])
+
+    at = _page()
+    at.session_state["ingredients_selected_id"] = record["id"]
+    at.run()
+    _buttons(at, "🗑️ Delete")[0].click()
+    at.run()
+
+    assert not at.exception
+    assert any("cannot be deleted" in w.value for w in at.warning)
+    assert not _buttons(at, "Confirm delete")
+    # the ingredient survives the blocked attempt
+    conn = gw.connect(db_path)
+    try:
+        assert len(gw.list_ingredients(conn)) == 1
     finally:
         conn.close()

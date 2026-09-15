@@ -10,6 +10,7 @@ from frontend.ingredients.utils import (
     build_ingredient_payload,
     custom_fields_from_df,
     custom_fields_to_df,
+    formula_usage_block_reason,
 )
 
 
@@ -67,3 +68,13 @@ def test_build_ingredient_payload_passes_custom_fields_through() -> None:
         custom_fields={"pH": {"value": "7", "unit": "mg/L"}},
     )
     assert payload["custom_fields"] == {"pH": {"value": "7", "unit": "mg/L"}}
+
+
+def test_formula_usage_block_reason_allows_unused_ingredient() -> None:
+    assert formula_usage_block_reason(0) is None
+    assert formula_usage_block_reason(None) is None
+
+
+def test_formula_usage_block_reason_pluralizes_the_count() -> None:
+    assert formula_usage_block_reason(1) == "1 formula use this ingredient."
+    assert formula_usage_block_reason(3) == "3 formulas use this ingredient."
