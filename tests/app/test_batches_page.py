@@ -14,18 +14,24 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from backend.gateway import batches as gw
+from backend.gateway import samples as sgw
 from frontend.batches import utils
 
 
 @pytest.fixture()
 def db_path(tmp_path, monkeypatch):
     """Temp dev-DB paths for the page under test (batches + formulas —
-    the create dialog reads the Formulas service)."""
+    the create dialog reads the Formulas service — and samples, which the
+    detail Samples tab and delete guard read)."""
     batches_path = tmp_path / "batches.db"
     monkeypatch.setattr("backend.services.batches.store.DEV_DB_PATH", batches_path)
     monkeypatch.setattr(
         "backend.services.formulas.store.DEV_DB_PATH",
         tmp_path / "formulas.db",
+    )
+    monkeypatch.setattr(
+        "backend.services.samples.store.DEV_DB_PATH",
+        tmp_path / "samples.db",
     )
     return batches_path
 
@@ -190,6 +196,41 @@ def test_detail_page_loads_via_session_state(db_path) -> None:
     # run-details + actuals save surfaces render
     assert any(b.label == "Save run details" for b in at.button)
     assert any(b.label == "Save actual amounts" for b in at.button)
+
+
+def test_detail_samples_tab_lists_samples(db_path) -> None:
+    """The Samples tab now reads the real reverse link (README §6)."""
+    conn = gw.connect(db_path)
+    try:
+        record = gw.create_batch(conn, _payload())
+    finally:
+        conn.close()
+
+    sconn = sgw.connect(db_path.parent / "samples.db")
+    try:
+        sgw.create_sample(
+            sconn,
+            {
+                "sample_code": "4A8",
+                "origin": "batch",
+                "batch_id": record["id"],
+                "taken_at": "2026-09-15",
+                "status": "active",
+                "retention": {
+                    "sent_at": "2026-09-15",
+                    "storage_condition": "refrigerator",
+                },
+            },
+        )
+    finally:
+        sconn.close()
+
+    at = AppTest.from_file("frontend/batches/detail.py")
+    at.session_state["batches_detail_id"] = record["id"]
+    at.run()
+    assert not at.exception
+    assert any("4A8" in at.dataframe[i].value.to_string() for i in range(len(at.dataframe)))
+    assert any(m.label == "Samples" and m.value == "1" for m in at.metric)
 
 
 def test_detail_saves_actual_amounts_without_error(db_path) -> None:

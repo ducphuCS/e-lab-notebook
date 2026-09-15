@@ -189,8 +189,22 @@ def test_deviation_only_when_units_match() -> None:
     assert utils.deviation(None, "g", 2240.0, "g") is None
 
 
-def test_batch_stats_placeholders() -> None:
+def test_batch_stats_counts() -> None:
     assert utils.batch_stats(_record()) == {"samples": 0, "reports": 0}
+    assert utils.batch_stats(_record(), sample_count=3) == {
+        "samples": 3,
+        "reports": 0,
+    }
+    assert utils.batch_stats(
+        _record(), sample_count=3, report_count=2
+    ) == {"samples": 3, "reports": 2}
+
+
+def test_samples_block_reason() -> None:
+    assert utils.samples_block_reason(0) is None
+    assert utils.samples_block_reason(None) is None
+    assert "1 sample" in utils.samples_block_reason(1)
+    assert "2 samples" in utils.samples_block_reason(2)
 
 
 # --- composition editor ----------------------------------------------------
