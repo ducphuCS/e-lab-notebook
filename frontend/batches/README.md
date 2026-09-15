@@ -45,8 +45,10 @@ Months later, anyone can open a batch and read its full story.
   (formulators weigh ingredients first), actual yield, observations /
   deviation notes (Q2). Processing actuals are **not** recorded in v0 —
   step-by-step execution logging comes later (Q2, Q8).
-- Links to the formula (upstream) and to samples / test reports (downstream,
-  read-only counts/stubs until Samples lands — same treatment as Formulas).
+- Links to the formula (upstream) and to samples / test reports (downstream).
+  The samples link is live (Samples v0, 2026-09-15): real counts on the
+  overview/detail, a list on the detail Samples tab, and the delete guard
+  reads it. Test reports stay a placeholder until that module lands.
 - Delete, allowed only while the batch is *planned* with no linked samples
   or test reports (Q6).
 
@@ -115,8 +117,9 @@ Two views — overview and detail — over the single Lab sidebar entry
     snapshot, shown read-only for reference. Actual processing values are
     **not** recorded in v0; this tab grows actuals with the step-by-step
     execution log later (Q2, Q8).
-  - **Samples** — read-only list/count of samples produced from this batch
-    and their test reports (placeholders until Samples / Test Reports land).
+  - **Samples** — list/count of the samples produced from this batch, with a
+    link into the sample detail. Test reports stay a placeholder until Test
+    Reports lands (Samples v0, 2026-09-15).
 
 Create / edit / delete launch from the overview and the detail view.
 Empty states: "No batches yet — create one from a formula" on overview;
@@ -190,11 +193,12 @@ requests/responses (per `docs/TEST_STRATEGIES.md`).
   (Q1 in that letter). When a later phase derives *actual* batch cost, actual
   amounts × ingredient unit cost (the cost field planned with Formulas, see
   Ingredients letter decision log 2026-08-26) supply it.
-- **Samples** (Lab, stub): a batch produces samples; the detail Samples tab
-  shows counts/links. Sample-side link mechanics (can a sample exist without
-  a batch? PROJECT.md researchers "work with samples with or without
-  knowledge about the formulations behind") are decided in the Samples
-  letter. The delete guard (Q6) reads the sample/test-report links.
+- **Samples** (Lab): a batch produces samples; the detail Samples tab lists
+  them and links into sample detail. Sample-side link mechanics (batch-born
+  vs standalone benchmark, one retention transfer per sample) are decided in
+  the Samples letter. The delete guard (Q6) now reads the sample count
+  (Samples v0, 2026-09-15) — a batch that produced samples cannot be
+  deleted.
 - **Test reports** (Lab, stub): produced for the samples of a batch;
   reachable through the batch's samples.
 - **Documents** (Library, stub): owns attachments; batches carry no upload
@@ -443,3 +447,4 @@ source of truth as it evolves.*
 | 2026-09-09 | Reverse-link summaries now carry the pinned `formula_version` (`list_batches_by_formula` SELECT + gateway batch-summary contract extended): the Formulas detail Overview tab's "Batches from this formula" table shows a Version column per batch and the open-batch selectbox labels include it, so batches made from an older formula revision stand out once the formula has moved on (§6 bullet updated to match) | ducphu |
 | 2026-09-09 | Relationship reminder captions (owner request): the Batches overview caption under the page title and the detail Composition tab note state the batch↔formula relationship — planned amounts are fixed at creation (the formula's composition, scaled to the batch's target yield) and later formula edits never rewrite a batch; mirrored on the Formulas page (its letter's decision log 2026-09-09) | ducphu |
 | 2026-09-10 | Save feedback generalized out of this module into a single shared helper (`frontend/common.py`: `notify()` + `show_pending_notification()`), applied to Ingredients, Formulas and Batches. Renders a write outcome on the page run that follows the save: **success → non-blocking toast**, **failure → the shared "Save result" modal** with the validation problems (dismissible X/ESC/click-outside or OK). Supersedes the 2026-09-09 row's Batches-local modal and its success-modal behavior; the underlying reason is unchanged (inline banners/toasts do not survive the rerun). Read-only render state (load errors, empty lists) and validation errors shown while an editor/dialog is still open stay inline, next to the user's input | ducphu |
+| 2026-09-15 | Samples v0 landed, wiring this module's downstream link: the Samples service exposes light summaries + counts by batch; the overview/detail now show real sample counts, the detail Samples tab lists samples and links into `samples/detail.py`, and the delete guard blocks a batch with samples (checked in the delete confirm, mirroring the Formulas→Batches guard at the page layer). Test reports remain a placeholder | ducphu |

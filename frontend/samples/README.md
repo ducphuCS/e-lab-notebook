@@ -1,7 +1,9 @@
 # Samples — Intention Letter
 
-> **Section:** Lab · **Status:** resolved — Q1–Q15 answered by the owner
-> (2026-09-15); decisions in §9–§10. Not implemented.
+> **Section:** Lab · **Status:** resolved + implemented — Q1–Q15 answered
+> by the owner (2026-09-15); decisions in §9–§10. Samples v0 implemented
+> (service, gateway, overview + hidden detail pages, tests, plus the Batches
+> reverse link + delete guard) — see the decision log for follow-ups.
 
 ## 1. Intention
 
@@ -332,3 +334,5 @@ answer where it adds nuance.*
 | 2026-09-15 | Q13: no "current team/storage" value; transfer history is the source of truth, overview shows a transfer count | ducphu |
 | 2026-09-15 | Q14: optional `source` column for supplier / brand provenance (mainly benchmarks) | ducphu |
 | 2026-09-15 | Q15: storage-condition enum = refrigerator, room temperature, TA35, TA45 (general list, hardcoded in v0) | ducphu |
+| 2026-09-15 | Samples v0 implemented: service (samples + sample_transfers, SQLite), gateway with the identity/retention/delete guards, overview + hidden detail page (`?sample_id=`, tabs Overview / Transfers / Test reports), dialog CRUD, and tests. Batches wired in the same pass: real samples count on its overview/detail, a Samples tab list linking into sample detail, and the delete guard blocking a batch that produced samples | ducphu |
+| 2026-09-15 | Implementation decisions confirmed by the owner: ambiguous characters excluded from the code alphabet (`A–Z0–9` minus `O 0 I 1 L`); the overview counts **dispatches only** (the retention row is an anchor, not a hand-off); transfers carry no `created_at`/`updated_at` (the letter's schema); `sample_code`/`origin`/`batch_id` are frozen after creation; the page resolves `batch_code` from the Batches service (no denormalized snapshot); age in weeks = completed weeks | ducphu |
