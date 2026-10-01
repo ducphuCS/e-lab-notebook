@@ -124,6 +124,17 @@ def main() -> None:
                 icon=":material/assessment:",
                 url_path="test-reports",
             ),
+            st.Page(
+                "test_reports/detail.py",
+                title="Test Report Detail",
+                icon=":material/assessment:",
+                # st.navigation in streamlit 1.60 does not support nested
+                # url_paths ("foo/bar"); the detail page gets its own
+                # single-segment path and the report id travels in
+                # st.query_params (?report_id=3) (README Q1).
+                url_path="test-report-detail",
+                visibility="hidden",
+            ),
         ],
         "Analyze": [
             st.Page(
