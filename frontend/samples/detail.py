@@ -9,6 +9,7 @@ The Transfers tab is the source of truth for where a sample has been
 (README Q13): the initial retention row is read-only, dispatches are
 added/edited/deleted here.
 """
+import pandas as pd
 import streamlit as st
 
 from backend.gateway import samples as gw
@@ -22,7 +23,7 @@ from frontend.samples.dialogs import (
     edit_dialog,
     edit_dispatch_dialog,
 )
-from frontend.samples.relations import batch_index
+from frontend.samples.relations import batch_index, results_for_sample
 from frontend.samples.utils import (
     dispatches,
     origin_label,
@@ -31,6 +32,7 @@ from frontend.samples.utils import (
     transfer_rows,
     weeks_since,
 )
+from frontend.test_reports.utils import transfer_label
 
 configure_page()
 
@@ -184,18 +186,70 @@ def _render_transfers(record: dict) -> None:
         add_dispatch_dialog(conn, record)
 
 
-def _render_reports(record: dict) -> None:
-    """Test reports for this sample (placeholders until Test Reports
-    lands, README Q7/§4)."""
+def _render_reports(record: dict, transfers: list[dict]) -> None:
+    """Test reports / results for this sample (Test Reports reverse link,
+    README §6). One report may cover several samples; every result here is
+    anchored to this sample and one of its transfers (Test Reports Q7)."""
+    results = results_for_sample(record["id"])
+    report_ids = {row["report_id"] for row in results}
     r1, r2 = st.columns(2)
-    r1.metric("Test reports", 0)
-    r2.metric("Anchored to", "sample + transfer")
-    st.info(
-        "Test reports are not implemented yet. Each report will attach to "
-        "this sample and one of its transfers — the retention row "
-        "guarantees a transfer link always exists (README Q7). Panels live "
-        "with the Test Reports module."
+    r1.metric("Test reports", len(report_ids))
+    r2.metric("Results", len(results))
+    if not results:
+        st.info(
+            "No test reports for this sample yet — results recorded on the "
+            "Test Reports page appear here."
+        )
+        return
+
+    transfer_by_id = {transfer["id"]: transfer for transfer in transfers}
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {
+                    "date": (row.get("evaluation_date") or "")[:10],
+                    "method": row.get("test_method") or "",
+                    "transfer": transfer_label(
+                        transfer_by_id.get(row.get("transfer_id"))
+                    ),
+                    "parameter": row.get("parameter") or "",
+                    "value": row.get("value"),
+                    "unit": row.get("unit") or "",
+                }
+                for row in results
+            ]
+        ),
+        hide_index=True,
+        width="stretch",
     )
+
+    # One row per report, so the user can open it (a report may cover
+    # several samples and several results of this one).
+    reports = {}
+    for row in results:
+        reports.setdefault(
+            row["report_id"],
+            {
+                "id": row["report_id"],
+                "method": row.get("test_method") or "",
+                "date": (row.get("evaluation_date") or "")[:10],
+            },
+        )
+    report_list = list(reports.values())
+    labels = [f"{r['date']} · {r['method']}" for r in report_list]
+    open_col, _ = st.columns([2, 3])
+    with open_col:
+        index = st.selectbox(
+            "Open a report",
+            range(len(report_list)),
+            format_func=lambda i: labels[i],
+            key=f"sample_report_{record['id']}",
+        )
+        if st.button("Open report detail", type="primary"):
+            st.switch_page(
+                "test_reports/detail.py",
+                query_params={"report_id": str(report_list[index]["id"])},
+            )
 
 
 # ---------------------------------------------------------------- sections
@@ -204,7 +258,7 @@ with tab_overview:
 with tab_transfers:
     _render_transfers(record)
 with tab_reports:
-    _render_reports(record)
+    _render_reports(record, transfers)
 
 # A write outcome (dispatch or sample edit/delete dialog) may be pending in
 # session_state — render it. Only one dialog can be open per run; no other

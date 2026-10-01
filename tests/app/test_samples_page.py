@@ -14,6 +14,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from backend.gateway import samples as gw
+from backend.gateway import test_reports as tr_gw
 from backend.services.batches import store as batches_store
 from frontend.samples import utils
 
@@ -29,6 +30,10 @@ def db_path(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "backend.services.batches.store.DEV_DB_PATH",
         tmp_path / "batches.db",
+    )
+    monkeypatch.setattr(
+        "backend.services.test_reports.store.DEV_DB_PATH",
+        tmp_path / "test_reports.db",
     )
     return samples_path
 
@@ -220,8 +225,8 @@ def test_detail_page_loads_via_session_state(db_path) -> None:
     assert any(m.label == "Storage condition" for m in at.metric)
     assert any("No dispatches yet" in c.value for c in at.caption)
     assert any(b.label == "➕ Dispatch to a team" for b in at.button)
-    # test reports placeholder
-    assert any("not implemented yet" in i.value for i in at.info)
+    # test reports tab is live, empty
+    assert any("No test reports for this sample yet" in i.value for i in at.info)
 
 
 def test_detail_with_dispatch_offers_manage_actions(db_path) -> None:
@@ -280,3 +285,88 @@ def test_detail_page_without_sample_id(db_path) -> None:
     at.run()
     assert not at.exception
     assert any("No sample selected" in i.value for i in at.info)
+
+
+# --- Test Reports reverse link (README §6 / Test Reports Q13) --------------
+
+def _seed_report(tmp_path, sample_id: int, transfer_id: int) -> None:
+    """Seed a report with one result anchored to a sample+transfer."""
+    conn = tr_gw.connect(tmp_path / "test_reports.db")
+    try:
+        report = tr_gw.create_report(
+            conn,
+            {"test_method": "Sensory panel", "evaluation_date": "2026-09-20"},
+        )
+        tr_gw.create_result(
+            conn,
+            report["id"],
+            {
+                "sample_id": sample_id,
+                "transfer_id": transfer_id,
+                "parameter": "Overall liking",
+                "value": 7.5,
+                "unit": "pts",
+            },
+        )
+    finally:
+        conn.close()
+
+
+def test_overview_shows_real_report_count(db_path, tmp_path) -> None:
+    conn = gw.connect(db_path)
+    try:
+        record = gw.create_sample(conn, _payload())
+        retention = gw.list_transfers(conn, record["id"])[0]
+    finally:
+        conn.close()
+    _seed_report(tmp_path, record["id"], retention["id"])
+
+    at = _page()
+    at.run()
+    assert not at.exception
+    assert at.dataframe[0].value.iloc[0]["reports"] == 1
+
+
+def test_delete_dialog_blocked_by_test_report(db_path, tmp_path) -> None:
+    conn = gw.connect(db_path)
+    try:
+        record = gw.create_sample(conn, _payload())
+        retention = gw.list_transfers(conn, record["id"])[0]
+    finally:
+        conn.close()
+    _seed_report(tmp_path, record["id"], retention["id"])
+
+    at = _page()
+    at.session_state[utils.SAMPLES_TABLE_KEY] = {"selection": {"rows": [0]}}
+    at.run()
+    _buttons(at, "🗑️ Delete")[0].click()
+    at.run()
+    assert not at.exception
+    assert any("test report" in w.value for w in at.warning)
+
+
+def test_transfer_pinned_by_result(db_path, tmp_path) -> None:
+    conn = gw.connect(db_path)
+    try:
+        record = gw.create_sample(conn, _payload())
+        dispatch = gw.create_transfer(
+            conn,
+            record["id"],
+            {
+                "kind": "dispatch",
+                "to_team": "shelf-life",
+                "sent_at": "2026-10-01",
+                "storage_condition": "TA45",
+            },
+        )
+    finally:
+        conn.close()
+    _seed_report(tmp_path, record["id"], dispatch["id"])
+
+    at = AppTest.from_file("frontend/samples/detail.py")
+    at.session_state["samples_detail_id"] = record["id"]
+    at.run()
+    _buttons(at, "🗑️ Delete dispatch")[0].click()
+    at.run()
+    assert not at.exception
+    assert any("cannot be deleted" in w.value for w in at.warning)

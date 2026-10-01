@@ -19,7 +19,7 @@ from backend.services.samples.store import DEV_DB_PATH
 
 from frontend.common import configure_page, show_pending_notification
 from frontend.samples.dialogs import create_dialog, delete_dialog, edit_dialog
-from frontend.samples.relations import batch_index
+from frontend.samples.relations import batch_index, report_counts_by_sample
 from frontend.samples.utils import (
     SAMPLES_TABLE_KEY,
     batch_options,
@@ -69,6 +69,10 @@ except gw.GatewayError as exc:
     st.error(f"Could not load transfer counts: {exc}")
     transfer_counts = {}
 
+# Reverse link to the Test Reports service (README §6): real per-sample
+# report counts for the overview column.
+report_counts = report_counts_by_sample()
+
 # ------------------------------------------------------------------ filters
 status_filter = "All"
 batch_filter_id = None
@@ -115,6 +119,7 @@ else:
             filtered,
             batch_index=batches_by_id,
             transfer_counts=transfer_counts,
+            report_counts=report_counts,
         )
     )
     event = st.dataframe(

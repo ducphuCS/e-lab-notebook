@@ -168,8 +168,8 @@ def overview_rows(
     """Sample records -> overview table rows (README §4).
 
     The dispatch column counts real handoffs (Q13, owner decision
-    2026-09-15); the report column stays a placeholder (0) until Test
-    Reports lands.
+    2026-09-15); the report column counts distinct test reports per
+    sample (Test Reports reverse link, live 2026-10-01).
     """
     batch_index = batch_index or {}
     transfer_counts = transfer_counts or {}
@@ -234,8 +234,8 @@ def sample_delete_block_reason(
 ) -> str | None:
     """Why a sample cannot be deleted, or None when deletion is allowed.
 
-    Dispatches block; test reports block (placeholder until that module
-    lands); the retention row never blocks (Q12).
+    Dispatches block; test reports block (live, Test Reports Q13); the
+    retention row never blocks (Q12).
     """
     parts: list[str] = []
     reports = report_count or 0

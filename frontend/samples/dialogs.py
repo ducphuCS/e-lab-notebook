@@ -23,7 +23,11 @@ from backend.services.samples.schema import (
 )
 
 from frontend.common import notify
-from frontend.samples.relations import batch_index
+from frontend.samples.relations import (
+    batch_index,
+    report_counts_by_sample,
+    result_count_for_transfer,
+)
 from frontend.samples.utils import (
     SAMPLES_TABLE_KEY,
     batch_options,
@@ -237,8 +241,8 @@ def edit_dialog(conn: Any, record: dict) -> None:
 def delete_dialog(conn: Any, record: dict) -> None:
     """Delete confirmation (README Q8/Q12).
 
-    Deletion is blocked by test reports (placeholder until that module
-    lands) or any dispatch; the retention row never blocks.
+    Deletion is blocked by linked test reports or any dispatch; the
+    retention row never blocks.
     """
     try:
         transfers = gw.list_transfers(conn, record["id"])
@@ -246,7 +250,8 @@ def delete_dialog(conn: Any, record: dict) -> None:
         st.error(f"Could not load transfers: {exc}")
         transfers = []
     dispatch_count = transfer_count(transfers, kind="dispatch")
-    reason = sample_delete_block_reason(dispatch_count, 0)
+    report_count = report_counts_by_sample().get(record["id"], 0)
+    reason = sample_delete_block_reason(dispatch_count, report_count)
 
     if reason:
         st.warning(
@@ -358,7 +363,22 @@ def edit_dispatch_dialog(conn: Any, record: dict, transfer: dict) -> None:
 
 @st.dialog("Delete dispatch")
 def delete_dispatch_dialog(conn: Any, record: dict, transfer: dict) -> None:
-    """Delete a dispatch (confirm). The retention row never reaches here."""
+    """Delete a dispatch (confirm). The retention row never reaches here.
+
+    A dispatch referenced by a test result is pinned against deletion
+    (Test Reports Q11) — the result would otherwise be orphaned.
+    """
+    pinned = result_count_for_transfer(transfer["id"])
+    if pinned:
+        st.warning(
+            f"This dispatch cannot be deleted — {pinned} test "
+            f"result{'s' if pinned != 1 else ''} anchor to it. Delete those "
+            "results first (Test Reports Q11)."
+        )
+        if st.button("Close", key="cancel_dispatch_pinned"):
+            st.rerun()
+        return
+
     st.warning(
         f"Delete the dispatch to **{transfer.get('to_team') or '?'}** "
         f"({transfer.get('sent_at') or '—'}) for **{record['sample_code']}**? "
