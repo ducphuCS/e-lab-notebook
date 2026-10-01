@@ -1,0 +1,10 @@
+{
+  "id": 1,
+  "report_id": 1,
+  "test_method": "Sensory panel",
+  "evaluation_date": "2026-09-20",
+  "parameter": "Overall liking",
+  "value": 7.5,
+  "unit": "pts",
+  "transfer_id": 5
+}
