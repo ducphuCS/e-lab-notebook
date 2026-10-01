@@ -16,6 +16,7 @@ from typing import Any
 import streamlit as st
 
 from backend.gateway import samples as sgw
+from backend.gateway import test_reports as tr_gw
 
 
 def samples_connection() -> Any:
@@ -53,3 +54,60 @@ def samples_for_batch(batch_id: int) -> list[dict]:
     except sgw.GatewayError as exc:
         st.error(f"Could not load samples: {exc}")
         return []
+
+
+# --- Test Reports reverse link (README §6 / Test Reports Q13) --------------
+
+def reports_connection() -> Any:
+    """Shared in-process connection to the Test Reports service.
+
+    One connection per session, opened lazily; the dev-DB path is
+    resolved at call time so AppTest's per-test monkeypatched path is
+    honoured.
+    """
+    from backend.services.test_reports import store as reports_store
+
+    if "batches_reports_conn" not in st.session_state:
+        st.session_state.batches_reports_conn = tr_gw.connect(
+            reports_store.DEV_DB_PATH
+        )
+    return st.session_state.batches_reports_conn
+
+
+def report_count_for_samples(sample_ids: list[int]) -> int:
+    """Distinct report count across a set of samples (0 on failure).
+
+    A report covering several of the batch's samples is counted once.
+    """
+    try:
+        return tr_gw.count_reports_by_sample_ids(
+            reports_connection(), sample_ids
+        )
+    except tr_gw.GatewayError as exc:
+        st.error(f"Could not load test-report counts: {exc}")
+        return 0
+
+
+def report_counts_by_batch() -> dict[int, int]:
+    """{batch_id: distinct report count} for the overview stats.
+
+    The batch->sample mapping comes from the Samples service; the report
+    count is derived from those samples' results (Test Reports Q13).
+    Empty map on service failure.
+    """
+    try:
+        samples = sgw.list_samples(samples_connection())
+    except sgw.GatewayError as exc:
+        st.error(f"Could not load samples: {exc}")
+        return {}
+    sample_ids_by_batch: dict[int, list[int]] = {}
+    for sample in samples:
+        batch_id = sample.get("batch_id")
+        if batch_id is not None:
+            sample_ids_by_batch.setdefault(int(batch_id), []).append(
+                int(sample["id"])
+            )
+    return {
+        batch_id: report_count_for_samples(sample_ids)
+        for batch_id, sample_ids in sample_ids_by_batch.items()
+    }

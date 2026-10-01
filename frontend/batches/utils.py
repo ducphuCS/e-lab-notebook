@@ -219,9 +219,9 @@ def yield_text(value: dict | None) -> str:
 def batch_stats(
     record: dict, sample_count: int = 0, report_count: int = 0
 ) -> dict[str, int]:
-    """Overview stats. The sample count is real now that Samples has
-    landed (README §6); test reports stay a placeholder (0) until Test
-    Reports lands."""
+    """Overview stats. Both columns are real reverse links: sample count
+    (Samples, 2026-09-15) and distinct test-report count (Test Reports,
+    2026-10-01)."""
     return {
         "samples": sample_count or 0,
         "reports": report_count or 0,

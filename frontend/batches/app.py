@@ -16,7 +16,10 @@ from backend.gateway import batches as gw
 from backend.services.batches.store import DEV_DB_PATH
 
 from frontend.batches.dialogs import create_dialog, delete_dialog, edit_dialog
-from frontend.batches.relations import sample_counts_by_batch
+from frontend.batches.relations import (
+    report_counts_by_batch,
+    sample_counts_by_batch,
+)
 from frontend.batches.utils import BATCHES_TABLE_KEY, batch_stats
 from frontend.common import configure_page, show_pending_notification
 
@@ -52,9 +55,10 @@ except gw.GatewayError as exc:
     st.error(f"Could not load batches: {exc}")
     records = []
 
-# Reverse link to the Samples service (README §6): real sample counts for
-# the overview stats and the delete guard.
+# Reverse links to the Samples and Test Reports services (README §6):
+# real sample and test-report counts for the overview stats and guards.
 samples_by_batch = sample_counts_by_batch()
+reports_by_batch = report_counts_by_batch()
 
 if not records:
     st.info("No batches yet — create one from a formula.")
@@ -64,7 +68,9 @@ else:
     rows = []
     for record in records:
         stats = batch_stats(
-            record, sample_count=samples_by_batch.get(record["id"], 0)
+            record,
+            sample_count=samples_by_batch.get(record["id"], 0),
+            report_count=reports_by_batch.get(record["id"], 0),
         )
         rows.append(
             {

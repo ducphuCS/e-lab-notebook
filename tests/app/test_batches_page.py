@@ -15,6 +15,7 @@ from streamlit.testing.v1 import AppTest
 
 from backend.gateway import batches as gw
 from backend.gateway import samples as sgw
+from backend.gateway import test_reports as tr_gw
 from frontend.batches import utils
 
 
@@ -32,6 +33,10 @@ def db_path(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "backend.services.samples.store.DEV_DB_PATH",
         tmp_path / "samples.db",
+    )
+    monkeypatch.setattr(
+        "backend.services.test_reports.store.DEV_DB_PATH",
+        tmp_path / "test_reports.db",
     )
     return batches_path
 
@@ -231,6 +236,62 @@ def test_detail_samples_tab_lists_samples(db_path) -> None:
     assert not at.exception
     assert any("4A8" in at.dataframe[i].value.to_string() for i in range(len(at.dataframe)))
     assert any(m.label == "Samples" and m.value == "1" for m in at.metric)
+
+
+def test_detail_test_report_count_is_real(db_path, tmp_path) -> None:
+    """The Test reports metric now derives from the batch's samples
+    (Test Reports reverse link, README §6)."""
+    conn = gw.connect(db_path)
+    try:
+        record = gw.create_batch(conn, _payload())
+    finally:
+        conn.close()
+
+    sconn = sgw.connect(db_path.parent / "samples.db")
+    try:
+        sample = sgw.create_sample(
+            sconn,
+            {
+                "sample_code": "4A8",
+                "origin": "batch",
+                "batch_id": record["id"],
+                "taken_at": "2026-09-15",
+                "status": "active",
+                "retention": {
+                    "sent_at": "2026-09-15",
+                    "storage_condition": "refrigerator",
+                },
+            },
+        )
+        retention = sgw.list_transfers(sconn, sample["id"])[0]
+    finally:
+        sconn.close()
+
+    tconn = tr_gw.connect(db_path.parent / "test_reports.db")
+    try:
+        report = tr_gw.create_report(
+            tconn,
+            {"test_method": "Sensory panel", "evaluation_date": "2026-09-20"},
+        )
+        tr_gw.create_result(
+            tconn,
+            report["id"],
+            {
+                "sample_id": sample["id"],
+                "transfer_id": retention["id"],
+                "parameter": "Overall liking",
+                "value": 7.5,
+                "unit": "pts",
+            },
+        )
+    finally:
+        tconn.close()
+
+    at = AppTest.from_file("frontend/batches/detail.py")
+    at.session_state["batches_detail_id"] = record["id"]
+    at.run()
+    assert not at.exception
+    assert any(m.label == "Test reports" and m.value == "1" for m in at.metric)
 
 
 def test_detail_saves_actual_amounts_without_error(db_path) -> None:

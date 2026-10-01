@@ -18,7 +18,10 @@ from backend.services.batches.schema import BATCH_STATUSES
 from backend.services.batches.store import DEV_DB_PATH
 
 from frontend.batches.dialogs import delete_dialog, edit_dialog
-from frontend.batches.relations import samples_for_batch
+from frontend.batches.relations import (
+    report_count_for_samples,
+    samples_for_batch,
+)
 from frontend.common import configure_page, notify, show_pending_notification
 from frontend.batches.utils import (
     COMPOSITION_EDITOR_COLUMNS,
@@ -253,11 +256,15 @@ def _render_processing(record: dict) -> None:
 def _render_samples(record: dict) -> None:
     """Samples taken from this batch and their test reports (README §6).
 
-    Samples are live (Samples service reverse link); test reports stay a
-    placeholder until Test Reports lands.
+    Samples and test reports are both live reverse links (Samples and Test
+    Reports services); a report covering several of this batch's samples
+    counts once.
     """
     related = samples_for_batch(record["id"])
-    stats = batch_stats(record, sample_count=len(related))
+    report_count = report_count_for_samples([row["id"] for row in related])
+    stats = batch_stats(
+        record, sample_count=len(related), report_count=report_count
+    )
     s1, s2 = st.columns(2)
     s1.metric("Samples", stats["samples"])
     s2.metric("Test reports", stats["reports"])
