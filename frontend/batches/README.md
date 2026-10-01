@@ -48,7 +48,9 @@ Months later, anyone can open a batch and read its full story.
 - Links to the formula (upstream) and to samples / test reports (downstream).
   The samples link is live (Samples v0, 2026-09-15): real counts on the
   overview/detail, a list on the detail Samples tab, and the delete guard
-  reads it. Test reports stay a placeholder until that module lands.
+  reads it. The test-report count is live too (Test Reports v0, 2026-10-01):
+  it derives the distinct report count from this batch's samples and adds no
+  new delete guard.
 - Delete, allowed only while the batch is *planned* with no linked samples
   or test reports (Q6).
 
@@ -118,8 +120,8 @@ Two views — overview and detail — over the single Lab sidebar entry
     **not** recorded in v0; this tab grows actuals with the step-by-step
     execution log later (Q2, Q8).
   - **Samples** — list/count of the samples produced from this batch, with a
-    link into the sample detail. Test reports stay a placeholder until Test
-    Reports lands (Samples v0, 2026-09-15).
+    link into the sample detail; the Test reports metric is the distinct
+    report count over those samples (Test Reports v0, 2026-10-01).
 
 Create / edit / delete launch from the overview and the detail view.
 Empty states: "No batches yet — create one from a formula" on overview;
@@ -199,8 +201,10 @@ requests/responses (per `docs/TEST_STRATEGIES.md`).
   the Samples letter. The delete guard (Q6) now reads the sample count
   (Samples v0, 2026-09-15) — a batch that produced samples cannot be
   deleted.
-- **Test reports** (Lab, stub): produced for the samples of a batch;
-  reachable through the batch's samples.
+- **Test reports** (Lab): produced for the samples of a batch; reachable
+  through the batch's samples (Test Reports v0, 2026-10-01). The batch
+  overview/detail show the distinct report count over its samples; no direct
+  batch↔report link or extra delete guard.
 - **Documents** (Library, stub): owns attachments; batches carry no upload
   path (out of scope, §2).
 - **Dashboard / Overview**: the Overview module's project timeline shows
@@ -448,3 +452,5 @@ source of truth as it evolves.*
 | 2026-09-09 | Relationship reminder captions (owner request): the Batches overview caption under the page title and the detail Composition tab note state the batch↔formula relationship — planned amounts are fixed at creation (the formula's composition, scaled to the batch's target yield) and later formula edits never rewrite a batch; mirrored on the Formulas page (its letter's decision log 2026-09-09) | ducphu |
 | 2026-09-10 | Save feedback generalized out of this module into a single shared helper (`frontend/common.py`: `notify()` + `show_pending_notification()`), applied to Ingredients, Formulas and Batches. Renders a write outcome on the page run that follows the save: **success → non-blocking toast**, **failure → the shared "Save result" modal** with the validation problems (dismissible X/ESC/click-outside or OK). Supersedes the 2026-09-09 row's Batches-local modal and its success-modal behavior; the underlying reason is unchanged (inline banners/toasts do not survive the rerun). Read-only render state (load errors, empty lists) and validation errors shown while an editor/dialog is still open stay inline, next to the user's input | ducphu |
 | 2026-09-15 | Samples v0 landed, wiring this module's downstream link: the Samples service exposes light summaries + counts by batch; the overview/detail now show real sample counts, the detail Samples tab lists samples and links into `samples/detail.py`, and the delete guard blocks a batch with samples (checked in the delete confirm, mirroring the Formulas→Batches guard at the page layer). Test reports remain a placeholder | ducphu |
+| 2026-10-01 | Test Reports letter resolved (`frontend/test_reports/README.md`): it will wire this module's test-report count (derived from the batch's samples) when it lands; no new delete guard for reports (samples already guard the batch) | ducphu |
+| 2026-10-01 | Test Reports v0 **implemented**: the overview/detail Test reports metric is now the live distinct report count over the batch's samples; no new delete guard (samples already guard the batch) | ducphu |

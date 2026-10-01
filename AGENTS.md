@@ -73,18 +73,18 @@ Current layout:
 |---|---|---|
 | `main.py` | Runs the app — launches the backend entrypoint, then the frontend router. | functional |
 | `frontend/app.py` | Frontend entrypoint — `st.navigation` router over the four sections **Overview, Library, Lab, Analyze**. | functional |
-| `frontend/<module>/` | One folder per module/page, each with its own files **and a README intention letter**. `formulas/`, `batches/` and `samples/` add a hidden `detail.py` child page (ids via `?formula_id=` / `?batch_id=` / `?sample_id=`). | pattern in use |
+| `frontend/<module>/` | One folder per module/page, each with its own files **and a README intention letter**. `formulas/`, `batches/`, `samples/` and `test_reports/` add a hidden `detail.py` child page (ids via `?formula_id=` / `?batch_id=` / `?sample_id=` / `?report_id=`). | pattern in use |
 | `backend/app.py` | Backend entrypoint. | exists — placeholder (starts no services) |
-| `backend/gateway/` | Gateway clients — the only place allowed to do transport; in-process for v0. | `ingredients.py`, `formulas.py`, `batches.py`, `samples.py` |
-| `backend/services/` | Services (SQLite store + validation per module). | `ingredients/`, `formulas/`, `batches/`, `samples/` |
+| `backend/gateway/` | Gateway clients — the only place allowed to do transport; in-process for v0. | `ingredients.py`, `formulas.py`, `batches.py`, `samples.py`, `test_reports.py` |
+| `backend/services/` | Services (SQLite store + validation per module). | `ingredients/`, `formulas/`, `batches/`, `samples/`, `test_reports/` |
 | `tests/` | pytest suites per `docs/TEST_STRATEGIES.md` (`unit/`, `contracts/`, `app/`). | populated |
 | `docs/` | Product + methodology docs. | `PROGRAM.md`, `IDEAS.md`, `TEST_STRATEGIES.md`, `prompts/` |
 | `archive/` | Older docs. | `PROJECT.md` |
 | `.env` | Empty env file. | — |
 
 **Implemented frontend modules:** Ingredients, Formulas, Batches, Samples,
-DOE (legacy — see §6). **Registered placeholder stubs:** dashboard, projects,
-equipment, test methods, test panels, documents, test reports.
+Test Reports, DOE (legacy — see §6). **Registered placeholder stubs:**
+dashboard, projects, equipment, test methods, test panels, documents.
 
 ## 6. Current state
 
@@ -108,12 +108,19 @@ samples, test reports), Analyze (DOE).
 - **Samples** (Lab) — v0: batch-born or standalone benchmark samples, a
   unique 3-char code, lifecycle active → depleted → expired, transfer events
   (`retention` + dispatches to other teams), hidden detail page, delete guard
-  blocked by dispatches (test-report check is a placeholder). Reverse link to
-  Batches is live (batch Samples tab + delete guard).
+  blocked by dispatches **and linked test reports**. Reverse links to Batches
+  and Test Reports are live (batch Samples tab + delete guard; sample Test
+  reports tab + report count + transfer pinning).
+- **Test Reports** (Lab) — v0: one evaluation event per report covering one
+  or many samples; results are structured rows (`parameter` + `value` +
+  `unit`) anchored to a sample + its transfer; single generic template with a
+  free-text method (formatted Test Methods link later); hidden detail page
+  (tabs Overview, Results); full CRUD + service/gateway/tests. Reverse links
+  from Samples and Batches are live.
 - **DOE** (Analyze) — **legacy**: inherited from the original "Formulator
   Plan Mode" page and slated for a total revision (`frontend/doe/README.md`).
 - Registered-but-stub pages: dashboard, projects, equipment, test methods,
-  test panels, documents, test reports (§5).
+  test panels, documents (§5).
 
 Recorded as **open** in the module letters: the ingredient unit-cost field +
 formula cost contribution (Formulas letter Q8). The "Formulas using this
@@ -121,8 +128,7 @@ ingredient" reverse count is **live** (Ingredients letter, 2026-09-10): the
 Ingredients details panel shows the real count and blocks deleting an
 ingredient that a formula references.
 
-Samples records as **open**: test reports (attach to sample + transfer) and
-multi-team permissions (Samples letter §2/§6).
+Samples records as **open**: multi-team permissions (Samples letter §2/§6).
 
 **About this section:** it is a deliberately lean snapshot. The authoritative
 current state is the code, `git log`, and the per-module README letters under

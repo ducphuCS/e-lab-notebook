@@ -98,8 +98,10 @@ Two views over the single Lab sidebar entry (Formulas/Batches precedent, Q9):
   - **Transfers** — newest first: kind (`retention` / `dispatch`), team, sent
     date, storage condition, sent by, notes. The retention row is read-only;
     dispatches are added/edited here (Q6, Q7).
-  - **Test reports** — reports for this sample (each anchored to a transfer)
-    and their panels (placeholders until Test Reports lands, Q7).
+  - **Test reports** — live (Test Reports v0, 2026-10-01): this sample's
+    result rows (report date, method, transfer, parameter, value, unit) with a
+    link into the report detail. A report may cover one or many samples; each
+    result is anchored to this sample and one of its transfers (Q7).
 
 Create / edit / delete launch from overview and detail; empty states per view.
 
@@ -162,9 +164,13 @@ shared, gateway validates requests/responses (`docs/TEST_STRATEGIES.md`).
   with linked samples, matching item 2. Benchmarks have no batch.
 - **Formulas** — reachable through the batch; benchmarks have no formula
   lineage (Q1).
-- **Test reports** — attach to **sample + transfer**; the retention row
-  guarantees the transfer link is never null (Q7). Panel↔report link is Test
-  Reports' letter to define.
+- **Test reports** — live (Test Reports v0, 2026-10-01). Reports attach to
+  **sample + transfer**; the retention row guarantees the transfer link is
+  never null (Q7). A report covers one or many samples and each outcome is a
+  result row anchored to sample + transfer (many-to-many via results, defined
+  in `frontend/test_reports/README.md`). The module wires this page's report
+  count, Test reports tab and delete guard, and pins a transfer against
+  deletion while a result references it (Test Reports Q11).
 - **Documents**, **other R&D teams** — attachments out of scope; teams are
   recorded on dispatches, no permissions in v0 (Q10).
 
@@ -336,3 +342,5 @@ answer where it adds nuance.*
 | 2026-09-15 | Q15: storage-condition enum = refrigerator, room temperature, TA35, TA45 (general list, hardcoded in v0) | ducphu |
 | 2026-09-15 | Samples v0 implemented: service (samples + sample_transfers, SQLite), gateway with the identity/retention/delete guards, overview + hidden detail page (`?sample_id=`, tabs Overview / Transfers / Test reports), dialog CRUD, and tests. Batches wired in the same pass: real samples count on its overview/detail, a Samples tab list linking into sample detail, and the delete guard blocking a batch that produced samples | ducphu |
 | 2026-09-15 | Implementation decisions confirmed by the owner: ambiguous characters excluded from the code alphabet (`A–Z0–9` minus `O 0 I 1 L`); the overview counts **dispatches only** (the retention row is an anchor, not a hand-off); transfers carry no `created_at`/`updated_at` (the letter's schema); `sample_code`/`origin`/`batch_id` are frozen after creation; the page resolves `batch_code` from the Batches service (no denormalized snapshot); age in weeks = completed weeks | ducphu |
+| 2026-10-01 | Downstream link defined by the Test Reports letter (`frontend/test_reports/README.md`): reports hold per-sample result rows anchored to sample + transfer; the module wires this page's report count, Test reports tab and delete guard, and pins a referenced transfer against deletion. Wiring lands with that module | ducphu |
+| 2026-10-01 | Test Reports v0 **implemented**: the overview report count is live, the detail Test reports tab lists this sample's results with links into the report, the delete guard now also blocks a sample with linked reports (test-report clause no longer a placeholder), and a transfer referenced by a result cannot be deleted (Test Reports Q11) | ducphu |
